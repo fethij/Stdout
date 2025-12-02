@@ -3,6 +3,7 @@ package com.tewelde.stdout.features.feed
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,11 +15,14 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -68,7 +72,6 @@ data class FeedState(
 sealed interface FeedEvent : CircuitUiEvent {
     data class OpenStory(val story: Story) : FeedEvent
     data class ChangeType(val type: StoryType) : FeedEvent
-    data object Refresh : FeedEvent
 }
 
 @Inject
@@ -105,10 +108,6 @@ class FeedPresenter(
                 is FeedEvent.ChangeType -> {
                     selectedType = event.type
                 }
-
-                FeedEvent.Refresh -> {
-
-                }
             }
         }
     }
@@ -132,10 +131,21 @@ fun Feed(state: FeedState, modifier: Modifier = Modifier) {
             modifier = Modifier.padding(16.dp)
         )
 
+        val pullToRefreshState = rememberPullToRefreshState()
         PullToRefreshBox(
             isRefreshing = lazyPagingItems.loadState.refresh is LoadState.Loading,
             onRefresh = { lazyPagingItems.refresh() },
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
+            state = pullToRefreshState,
+            indicator = {
+                Indicator(
+                    modifier = Modifier.align(Alignment.TopCenter),
+                    isRefreshing = lazyPagingItems.loadState.refresh is LoadState.Loading,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    color = MaterialTheme.colorScheme.primary,
+                    state = pullToRefreshState
+                )
+            }
         ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize()
@@ -144,6 +154,22 @@ fun Feed(state: FeedState, modifier: Modifier = Modifier) {
                     val story = lazyPagingItems[index]
                     if (story != null) {
                         StoryItem(story, onClick = { state.eventSink(FeedEvent.OpenStory(story)) })
+                    }
+                }
+
+                if (lazyPagingItems.loadState.append is LoadState.Loading) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
                 }
             }

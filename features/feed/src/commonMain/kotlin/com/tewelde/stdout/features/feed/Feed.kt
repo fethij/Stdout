@@ -24,7 +24,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,13 +33,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.paging.LoadState
+import androidx.paging.PagingData
+import androidx.paging.compose.collectAsLazyPagingItems
 import com.slack.circuit.codegen.annotations.CircuitInject
 import com.slack.circuit.retained.rememberRetained
 import com.slack.circuit.runtime.CircuitUiEvent
 import com.slack.circuit.runtime.CircuitUiState
 import com.slack.circuit.runtime.Navigator
 import com.slack.circuit.runtime.presenter.Presenter
-import com.slack.circuitx.effects.LaunchedImpressionEffect
 import com.tewelde.stdout.common.di.UiScope
 import com.tewelde.stdout.core.data.StoryRepository
 import com.tewelde.stdout.core.model.Story
@@ -49,7 +50,7 @@ import com.tewelde.stdout.core.navigation.DetailsScreen
 import com.tewelde.stdout.core.navigation.FeedScreen
 import com.tewelde.stdout.core.navigation.UrlScreen
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.Flow
 import me.tatarka.inject.annotations.Assisted
 import me.tatarka.inject.annotations.Inject
 import kotlin.time.Clock
@@ -59,8 +60,7 @@ import kotlin.time.Instant
 
 
 data class FeedState(
-    val stories: List<Story>,
-    val isLoading: Boolean,
+    val stories: Flow<PagingData<Story>>,
     val selectedType: StoryType,
     val eventSink: (FeedEvent) -> Unit
 ) : CircuitUiState
@@ -79,34 +79,14 @@ class FeedPresenter(
 ) : Presenter<FeedState> {
     @Composable
     override fun present(): FeedState {
-        var stories by rememberRetained { mutableStateOf(emptyList<Story>()) }
-        var isLoading by rememberRetained { mutableStateOf(false) }
         var selectedType by rememberRetained { mutableStateOf(StoryType.TOP) }
-        val scope = rememberCoroutineScope()
 
-        LaunchedImpressionEffect(selectedType) {
-            isLoading = true
-            stories = repository.getStories(
-                type = selectedType,
-                refresh = true
-            )
-            isLoading = false
-        }
-
-        fun refreshStories() {
-            scope.launch {
-                isLoading = true
-                stories = repository.getStories(
-                    type = selectedType,
-                    refresh = true
-                )
-                isLoading = false
-            }
+        val stories = remember(selectedType) {
+            repository.getStoriesPaged(selectedType)
         }
 
         return FeedState(
             stories = stories,
-            isLoading = isLoading,
             selectedType = selectedType
         ) { event ->
             when (event) {
@@ -124,21 +104,23 @@ class FeedPresenter(
 
                 is FeedEvent.ChangeType -> {
                     selectedType = event.type
-                    refreshStories()
                 }
 
                 FeedEvent.Refresh -> {
-                    refreshStories()
+
                 }
             }
         }
     }
 }
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 @CircuitInject(FeedScreen::class, UiScope::class)
 fun Feed(state: FeedState, modifier: Modifier = Modifier) {
+    val lazyPagingItems = state.stories.collectAsLazyPagingItems()
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -151,15 +133,18 @@ fun Feed(state: FeedState, modifier: Modifier = Modifier) {
         )
 
         PullToRefreshBox(
-            isRefreshing = state.isLoading,
-            onRefresh = { state.eventSink(FeedEvent.Refresh) },
+            isRefreshing = lazyPagingItems.loadState.refresh is LoadState.Loading,
+            onRefresh = { lazyPagingItems.refresh() },
             modifier = Modifier.fillMaxSize()
         ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize()
             ) {
-                items(state.stories) { story ->
-                    StoryItem(story, onClick = { state.eventSink(FeedEvent.OpenStory(story)) })
+                items(lazyPagingItems.itemCount) { index ->
+                    val story = lazyPagingItems[index]
+                    if (story != null) {
+                        StoryItem(story, onClick = { state.eventSink(FeedEvent.OpenStory(story)) })
+                    }
                 }
             }
         }

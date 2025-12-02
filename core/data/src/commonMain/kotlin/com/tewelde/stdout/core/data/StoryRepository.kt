@@ -1,5 +1,8 @@
 package com.tewelde.stdout.core.data
 
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
 import com.tewelde.stdout.common.coroutines.DispatcherProvider
 import com.tewelde.stdout.core.database.CommentDao
 import com.tewelde.stdout.core.database.StoryDao
@@ -10,6 +13,7 @@ import com.tewelde.stdout.core.model.Story
 import com.tewelde.stdout.core.model.StoryType
 import com.tewelde.stdout.core.network.HackerNewsApi
 import com.tewelde.stdout.core.network.model.NetworkStory
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
@@ -116,6 +120,26 @@ class StoryRepository(
                 }
             }
         }
+    }
+
+    suspend fun getStoryIds(type: StoryType): List<Long> {
+        return try {
+            storyListStore.fresh(type)
+        } catch (e: Exception) {
+            // Fallback to cached stories for the specific type
+            storyTypeDao.getStoryTypeSnapshot(type.name)?.storyIds
+                ?.split(",")?.map { it.toLong() } ?: emptyList()
+        }
+    }
+
+    fun getStoriesPaged(type: StoryType): Flow<PagingData<Story>> {
+        return Pager(
+            config = PagingConfig(
+                pageSize = 20,
+                enablePlaceholders = false
+            ),
+            pagingSourceFactory = { StoryPagingSource(this, type) }
+        ).flow
     }
 
     suspend fun getStory(id: Long): Story {

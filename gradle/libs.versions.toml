@@ -24,8 +24,8 @@ coil3 = "3.3.0"
 kotlinStdlib = "2.2.21"
 runner = "1.7.0"
 core = "1.7.0"
-foundation = "1.9.5"
 browser = "1.9.0"
+paging = "3.4.0-alpha04"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -40,7 +40,6 @@ androidx-activity-compose = { module = "androidx.activity:activity-compose", ver
 androidx-compose-ui = { module = "androidx.compose.ui:ui", version.ref = "androidxcomposeui" }
 androidx-lifecycle-viewmodelCompose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "androidx-lifecycle" }
 androidx-lifecycle-runtimeCompose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
-androidx-compose-foundation = { module = "androidx.compose.foundation:foundation", version = "1.7.5" }
 androidx-compose-material3 = { module = "androidx.compose.material3:material3", version = "1.3.1" }
 
 # Circuit
@@ -60,6 +59,10 @@ store5 = { module = "org.mobilenativefoundation.store:store5", version.ref = "st
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 androidx-sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite" }
+
+# Paging
+androidx-paging-common = { module = "androidx.paging:paging-common", version.ref = "paging" }
+androidx-paging-compose = { module = "androidx.paging:paging-compose", version.ref = "paging" }
 
 # Ktor
 ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }

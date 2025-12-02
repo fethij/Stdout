@@ -23,7 +23,6 @@ class ComposeMultiplatformConventionPlugin : Plugin<Project> {
                         implementation(composeDeps.foundation)
                         implementation(composeDeps.material3)
                         implementation(composeDeps.materialIconsExtended)
-                        implementation(composeDeps.material)
                         implementation(composeDeps.ui)
                         implementation(composeDeps.components.resources)
                         implementation(composeDeps.components.uiToolingPreview)

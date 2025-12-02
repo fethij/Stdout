@@ -9,6 +9,7 @@ import com.tewelde.stdout.core.database.StoryDao
 import com.tewelde.stdout.core.database.StoryEntity
 import com.tewelde.stdout.core.database.StoryTypeDao
 import com.tewelde.stdout.core.database.StoryTypeEntity
+import com.tewelde.stdout.core.model.Comment
 import com.tewelde.stdout.core.model.Story
 import com.tewelde.stdout.core.model.StoryType
 import com.tewelde.stdout.core.network.HackerNewsApi
@@ -124,7 +125,7 @@ class StoryRepository(
 
     suspend fun getStoryIds(type: StoryType): List<Long> {
         return try {
-            storyListStore.fresh(type)
+            storyListStore.get(type)
         } catch (e: Exception) {
             // Fallback to cached stories for the specific type
             storyTypeDao.getStoryTypeSnapshot(type.name)?.storyIds
@@ -142,8 +143,56 @@ class StoryRepository(
         ).flow
     }
 
+    fun getCommentsPaged(commentIds: List<Long>): Flow<PagingData<Comment>> {
+        return Pager(
+            config = PagingConfig(
+                pageSize = 20,
+                enablePlaceholders = false
+            ),
+            pagingSourceFactory = { CommentPagingSource(this, commentIds) }
+        ).flow
+    }
+
     suspend fun getStory(id: Long): Story {
         return storyStore.get(id)
+    }
+
+    suspend fun getComment(id: Long): Comment {
+        // TODO: Implement comment fetching properly with Store if needed, for now direct API or similar
+        // Assuming we have a way to get comments, maybe need to add it to Store or just fetch
+        // For now, let's assume we fetch it directly or via a new Store
+        // But wait, the repository structure suggests using Store.
+        // Let's check if we have commentStore or similar.
+        // The file content showed commentDao but not commentStore.
+        // Let's implement a simple fetch for now using API directly if store is missing, 
+        // or better, add a simple fetcher.
+        // Re-checking StoryRepository content... it has commentDao.
+        // It seems we need to add getComment to API and Repository.
+        // The search result showed HackerNewsApi has getComment.
+        // So we can just call api.getComment(id) and map it.
+        // But we should probably cache it too.
+        // For simplicity in this step, let's just fetch from API and map to domain.
+        // Wait, I need Comment domain model too.
+
+        val networkComment = api.getComment(id)
+        return Comment(
+            id = networkComment.id,
+            text = networkComment.text ?: "",
+            author = networkComment.by ?: "",
+            time = networkComment.time ?: 0,
+            parent = networkComment.parent ?: 0,
+            kids = networkComment.kids ?: emptyList()
+        )
+    }
+
+    suspend fun getComments(ids: List<Long>): List<Comment> {
+        return ids.mapNotNull { id ->
+            try {
+                getComment(id)
+            } catch (e: Exception) {
+                null
+            }
+        }
     }
 
     private fun StoryEntity.toDomain(): Story {

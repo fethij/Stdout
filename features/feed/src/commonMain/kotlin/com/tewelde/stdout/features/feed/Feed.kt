@@ -13,18 +13,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,9 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.paging.LoadState
 import androidx.paging.PagingData
 import androidx.paging.compose.collectAsLazyPagingItems
@@ -48,19 +42,15 @@ import com.slack.circuit.runtime.Navigator
 import com.slack.circuit.runtime.presenter.Presenter
 import com.tewelde.stdout.common.di.UiScope
 import com.tewelde.stdout.core.data.StoryRepository
+import com.tewelde.stdout.core.designsystem.theme.component.StoryItem
 import com.tewelde.stdout.core.model.Story
 import com.tewelde.stdout.core.model.StoryType
 import com.tewelde.stdout.core.navigation.DetailsScreen
 import com.tewelde.stdout.core.navigation.FeedScreen
 import com.tewelde.stdout.core.navigation.UrlScreen
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import me.tatarka.inject.annotations.Assisted
 import me.tatarka.inject.annotations.Inject
-import kotlin.time.Clock
-import kotlin.time.Duration.Companion.minutes
-import kotlin.time.ExperimentalTime
-import kotlin.time.Instant
 
 
 data class FeedState(
@@ -71,6 +61,7 @@ data class FeedState(
 
 sealed interface FeedEvent : CircuitUiEvent {
     data class OpenStory(val story: Story) : FeedEvent
+    data class OpenComments(val story: Story) : FeedEvent
     data class ChangeType(val type: StoryType) : FeedEvent
 }
 
@@ -103,6 +94,10 @@ class FeedPresenter(
                             )
                         )
                     }
+                }
+
+                is FeedEvent.OpenComments -> {
+                    navigator.goTo(DetailsScreen(event.story.id))
                 }
 
                 is FeedEvent.ChangeType -> {
@@ -153,7 +148,14 @@ fun Feed(state: FeedState, modifier: Modifier = Modifier) {
                 items(lazyPagingItems.itemCount) { index ->
                     val story = lazyPagingItems[index]
                     if (story != null) {
-                        StoryItem(story, onClick = { state.eventSink(FeedEvent.OpenStory(story)) })
+                        StoryItem(
+                            story,
+                            onClick = { state.eventSink(FeedEvent.OpenStory(story)) },
+                            onCommentClick = { state.eventSink(FeedEvent.OpenComments(story)) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        )
                     }
                 }
 
@@ -175,121 +177,6 @@ fun Feed(state: FeedState, modifier: Modifier = Modifier) {
             }
         }
     }
-}
-
-@Composable
-fun StoryItem(story: Story, onClick: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(16.dp)
-    ) {
-        Row {
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = story.title,
-                    color = Color.White,
-                    fontFamily = FontFamily.SansSerif,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 16.sp
-                )
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Default.ArrowUpward,
-                            contentDescription = null,
-                            modifier = Modifier.size(12.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = story.score.toString(),
-                            color = MaterialTheme.colorScheme.secondary,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 12.sp
-                        )
-                    }
-                    FullStop()
-                    Text(
-                        text = "@${story.by}",
-                        color = MaterialTheme.colorScheme.secondary,
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 12.sp
-                    )
-                    FullStop()
-                    RelativeTimeText(
-                        timestamp = story.time,
-                        color = MaterialTheme.colorScheme.secondary,
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 12.sp
-                    )
-                }
-            }
-            Text(
-                text = "[${story.descendants ?: 0}]",
-                color = MaterialTheme.colorScheme.primary,
-                fontFamily = FontFamily.Monospace,
-                fontSize = 12.sp
-            )
-        }
-    }
-}
-
-@Composable
-fun FullStop() {
-    Text(
-        text = "::",
-        color = MaterialTheme.colorScheme.secondary,
-        fontFamily = FontFamily.Monospace,
-        fontSize = 12.sp
-    )
-}
-
-@OptIn(ExperimentalTime::class)
-fun formatTime(timestamp: Long): String {
-    val now = Clock.System.now()
-    val storyTime = Instant.fromEpochSeconds(timestamp)
-    val duration = now - storyTime
-
-    return when {
-        duration.inWholeMinutes < 60 -> "${duration.inWholeMinutes}m ago"
-        duration.inWholeHours < 24 -> "${duration.inWholeHours}h ago"
-        else -> "${duration.inWholeDays}d ago"
-    }
-}
-
-@Composable
-fun RelativeTimeText(
-    timestamp: Long,
-    modifier: Modifier = Modifier,
-    color: Color = Color.Unspecified,
-    fontFamily: FontFamily? = null,
-    fontSize: TextUnit = TextUnit.Unspecified
-) {
-    var timeText by remember(timestamp) { mutableStateOf(formatTime(timestamp)) }
-
-    LaunchedEffect(timestamp) {
-        while (true) {
-            timeText = formatTime(timestamp)
-            delay(1.minutes)
-        }
-    }
-
-    Text(
-        text = timeText,
-        modifier = modifier,
-        color = color,
-        fontFamily = fontFamily,
-        fontSize = fontSize
-    )
 }
 
 @Composable

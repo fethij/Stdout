@@ -1,6 +1,7 @@
 package com.tewelde.stdout.shared
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -48,7 +49,7 @@ class StdoutApp(
                 Surface(color = MaterialTheme.colorScheme.background) {
                     ContentWithOverlays {
                         NavigableCircuitContent(
-                            modifier = modifier,
+                            modifier = modifier.displayCutoutPadding(),
                             navigator = navigator,
                             backStack = backStack,
                             decoratorFactory = remember(navigator) {

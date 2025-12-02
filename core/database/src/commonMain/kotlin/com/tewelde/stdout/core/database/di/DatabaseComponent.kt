@@ -6,6 +6,7 @@ import com.tewelde.stdout.common.coroutines.DispatcherProvider
 import com.tewelde.stdout.core.database.CommentDao
 import com.tewelde.stdout.core.database.HackerNewsDatabase
 import com.tewelde.stdout.core.database.StoryDao
+import com.tewelde.stdout.core.database.StoryTypeDao
 import me.tatarka.inject.annotations.Provides
 import software.amazon.lastmile.kotlin.inject.anvil.AppScope
 import software.amazon.lastmile.kotlin.inject.anvil.ContributesTo
@@ -38,4 +39,10 @@ interface DatabaseComponent : PlatformDatabaseComponent {
     fun provideStoryDao(
         database: HackerNewsDatabase
     ): StoryDao = database.storyDao()
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideStoryTypeDao(
+        database: HackerNewsDatabase
+    ): StoryTypeDao = database.storyTypeDao()
 }

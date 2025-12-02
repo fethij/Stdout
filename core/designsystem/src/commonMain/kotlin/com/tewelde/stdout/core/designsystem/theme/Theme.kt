@@ -12,7 +12,7 @@ val TerminalText = Color(0xFFE0E0E0)
 
 private val DarkColorPalette: ColorScheme = darkColorScheme(
     primary = HackerNewsOrange,
-    secondary = HackerNewsOrange,
+    secondary = Color.Gray,
     background = TerminalBackground,
     surface = TerminalBackground,
     onPrimary = Color.Black,

@@ -8,7 +8,8 @@ import androidx.room.RoomDatabaseConstructor
 @Database(
     entities = [
         StoryEntity::class,
-        CommentEntity::class
+        CommentEntity::class,
+        StoryTypeEntity::class
     ],
     version = 1
 )
@@ -16,13 +17,13 @@ import androidx.room.RoomDatabaseConstructor
 abstract class HackerNewsDatabase : RoomDatabase() {
     abstract fun storyDao(): StoryDao
     abstract fun commentDao(): CommentDao
+    abstract fun storyTypeDao(): StoryTypeDao
 
     companion object {
         const val DATABASE_NAME = "hackernews.db"
     }
 }
 
-@Suppress("KotlinNoActualForExpect")
 expect object HackerNewsDatabaseConstructor : RoomDatabaseConstructor<HackerNewsDatabase> {
     override fun initialize(): HackerNewsDatabase
 }

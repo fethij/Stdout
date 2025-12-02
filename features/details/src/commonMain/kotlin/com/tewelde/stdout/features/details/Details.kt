@@ -54,7 +54,7 @@ class DetailsPresenter(
             isLoading = true
             // In a real app, we'd have a method to get a single story, potentially cached
             // For now, we assume it might be in the store or we fetch it
-//             repository.getStory(screen.storyId)
+            story = repository.getStory(screen.storyId)
             isLoading = false
         }
 

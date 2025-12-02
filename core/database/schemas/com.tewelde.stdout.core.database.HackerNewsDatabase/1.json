@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "e4b036fe759560ae7d17df17297e9ef5",
+    "identityHash": "01985cbbf22cc03eb2d6069f0e02d466",
     "entities": [
       {
         "tableName": "stories",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `title` TEXT NOT NULL, `url` TEXT, `by` TEXT, `score` INTEGER, `time` INTEGER NOT NULL, `descendants` INTEGER, `kids` TEXT, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `title` TEXT NOT NULL, `url` TEXT, `by` TEXT NOT NULL, `score` INTEGER NOT NULL, `time` INTEGER NOT NULL, `descendants` INTEGER, `kids` TEXT, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -28,12 +28,14 @@
           {
             "fieldPath": "by",
             "columnName": "by",
-            "affinity": "TEXT"
+            "affinity": "TEXT",
+            "notNull": true
           },
           {
             "fieldPath": "score",
             "columnName": "score",
-            "affinity": "INTEGER"
+            "affinity": "INTEGER",
+            "notNull": true
           },
           {
             "fieldPath": "time",
@@ -106,11 +108,35 @@
             "id"
           ]
         }
+      },
+      {
+        "tableName": "story_types",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`type` TEXT NOT NULL, `storyIds` TEXT NOT NULL, PRIMARY KEY(`type`))",
+        "fields": [
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "storyIds",
+            "columnName": "storyIds",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "type"
+          ]
+        }
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'e4b036fe759560ae7d17df17297e9ef5')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '01985cbbf22cc03eb2d6069f0e02d466')"
     ]
   }
 }

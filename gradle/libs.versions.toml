@@ -25,6 +25,7 @@ kotlinStdlib = "2.2.21"
 runner = "1.7.0"
 core = "1.7.0"
 foundation = "1.9.5"
+browser = "1.9.0"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -92,6 +93,7 @@ kotlin-serialization-gradlePlugin = { module = "org.jetbrains.kotlin:kotlin-seri
 kotlin-stdlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version.ref = "kotlinStdlib" }
 androidx-runner = { group = "androidx.test", name = "runner", version.ref = "runner" }
 androidx-core = { group = "androidx.test", name = "core", version.ref = "core" }
+androidx-browser = { group = "androidx.browser", name = "browser", version.ref = "browser" }
 
 [bundles]
 kotlinInjectAnvil = [

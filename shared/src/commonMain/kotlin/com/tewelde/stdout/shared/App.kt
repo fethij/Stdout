@@ -16,10 +16,12 @@ import com.slack.circuit.foundation.CircuitCompositionLocals
 import com.slack.circuit.foundation.NavigableCircuitContent
 import com.slack.circuit.foundation.rememberCircuitNavigator
 import com.slack.circuit.overlay.ContentWithOverlays
+import com.slack.circuit.runtime.Navigator
 import com.slack.circuitx.gesturenavigation.GestureNavigationDecorationFactory
 import com.tewelde.stdout.common.di.UiScope
 import com.tewelde.stdout.core.designsystem.theme.StdoutTheme
 import com.tewelde.stdout.core.navigation.FeedScreen
+import com.tewelde.stdout.core.navigation.OpenUrlNavigator
 import me.tatarka.inject.annotations.Inject
 import software.amazon.lastmile.kotlin.inject.anvil.ContributesBinding
 import software.amazon.lastmile.kotlin.inject.anvil.SingleIn
@@ -28,8 +30,9 @@ import software.amazon.lastmile.kotlin.inject.anvil.SingleIn
 interface AppUi {
     @Composable
     fun Content(
-        onRootPop: () -> Unit,
         modifier: Modifier = Modifier,
+        launchUrl: (String) -> Unit,
+        onRootPop: () -> Unit,
     )
 }
 
@@ -41,16 +44,23 @@ class StdoutApp(
 ) : AppUi {
 
     @Composable
-    override fun Content(onRootPop: () -> Unit, modifier: Modifier) {
+    override fun Content(
+        modifier: Modifier,
+        launchUrl: (String) -> Unit,
+        onRootPop: () -> Unit,
+    ) {
         val backStack = rememberSaveableBackStack(root = FeedScreen)
         val navigator = rememberCircuitNavigator(backStack) { onRootPop() }
+        val urlNavigator: Navigator = remember(navigator) {
+            OpenUrlNavigator(navigator, launchUrl)
+        }
         CircuitCompositionLocals(circuit) {
             StdoutTheme {
                 Surface(color = MaterialTheme.colorScheme.background) {
                     ContentWithOverlays {
                         NavigableCircuitContent(
                             modifier = modifier.displayCutoutPadding(),
-                            navigator = navigator,
+                            navigator = urlNavigator,
                             backStack = backStack,
                             decoratorFactory = remember(navigator) {
                                 GestureNavigationDecorationFactory(onBackInvoked = navigator::pop)

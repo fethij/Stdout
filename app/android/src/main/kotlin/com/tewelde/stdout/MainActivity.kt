@@ -8,9 +8,11 @@ import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.core.net.toUri
 import com.tewelde.com.tewelde.stdout.di.AndroidUiComponent
 import com.tewelde.stdout.common.di.ComponentHolder
 
@@ -28,6 +30,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             uiComponent.appUi.Content(
                 onRootPop = backDispatcherRootPop(),
+                launchUrl = { url ->
+                    val intent = CustomTabsIntent.Builder().build()
+                    intent.launchUrl(this, url.toUri())
+                    true
+                },
             )
 
             EdgeToEdgeSideEffect(

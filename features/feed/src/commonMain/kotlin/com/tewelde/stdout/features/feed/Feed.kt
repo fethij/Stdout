@@ -47,6 +47,7 @@ import com.tewelde.stdout.core.model.Story
 import com.tewelde.stdout.core.model.StoryType
 import com.tewelde.stdout.core.navigation.DetailsScreen
 import com.tewelde.stdout.core.navigation.FeedScreen
+import com.tewelde.stdout.core.navigation.UrlScreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import me.tatarka.inject.annotations.Assisted
@@ -65,7 +66,7 @@ data class FeedState(
 ) : CircuitUiState
 
 sealed interface FeedEvent : CircuitUiEvent {
-    data class OpenStory(val id: Long) : FeedEvent
+    data class OpenStory(val story: Story) : FeedEvent
     data class ChangeType(val type: StoryType) : FeedEvent
     data object Refresh : FeedEvent
 }
@@ -110,7 +111,15 @@ class FeedPresenter(
         ) { event ->
             when (event) {
                 is FeedEvent.OpenStory -> {
-                    navigator.goTo(DetailsScreen(event.id))
+                    event.story.url?.let {
+                        navigator.goTo(UrlScreen(it))
+                    } ?: {
+                        navigator.goTo(
+                            DetailsScreen(
+                                event.story.id
+                            )
+                        )
+                    }
                 }
 
                 is FeedEvent.ChangeType -> {
@@ -150,7 +159,7 @@ fun Feed(state: FeedState, modifier: Modifier = Modifier) {
                 modifier = Modifier.fillMaxSize()
             ) {
                 items(state.stories) { story ->
-                    StoryItem(story, onClick = { state.eventSink(FeedEvent.OpenStory(story.id)) })
+                    StoryItem(story, onClick = { state.eventSink(FeedEvent.OpenStory(story)) })
                 }
             }
         }

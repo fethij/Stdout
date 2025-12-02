@@ -17,6 +17,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -163,7 +164,13 @@ fun Details(state: DetailsState, modifier: Modifier = Modifier) {
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
             fontFamily = FontFamily.Monospace,
-            modifier = Modifier.padding(bottom = 8.dp)
+            modifier = Modifier
+                .padding(bottom = 8.dp)
+                .clickable {
+                    state.story?.let {
+                        state.eventSink(DetailsEvent.OpenStory(it))
+                    }
+                }
         )
 
         if (state.story != null) {
@@ -185,7 +192,7 @@ fun Details(state: DetailsState, modifier: Modifier = Modifier) {
                             modifier = Modifier.fillParentMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
-                            CircularProgressIndicator(color = Color.White)
+                            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                         }
                     }
                 }
@@ -294,7 +301,7 @@ fun CommentItem(
                     if (loadingReplies.contains(comment.id)) {
                         CircularProgressIndicator(
                             modifier = Modifier.padding(start = 8.dp).height(20.dp).width(20.dp),
-                            color = Color.Gray,
+                            color = MaterialTheme.colorScheme.secondary,
                             strokeWidth = 2.dp
                         )
                     } else {

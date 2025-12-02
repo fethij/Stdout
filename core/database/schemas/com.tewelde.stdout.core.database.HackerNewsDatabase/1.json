@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "20ed77b950c484975d46590124545ef2",
+    "identityHash": "e4b036fe759560ae7d17df17297e9ef5",
     "entities": [
       {
         "tableName": "stories",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `title` TEXT NOT NULL, `url` TEXT, `author` TEXT NOT NULL, `score` INTEGER NOT NULL, `time` INTEGER NOT NULL, `descendants` INTEGER NOT NULL, `kids` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `title` TEXT NOT NULL, `url` TEXT, `by` TEXT, `score` INTEGER, `time` INTEGER NOT NULL, `descendants` INTEGER, `kids` TEXT, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -26,16 +26,14 @@
             "affinity": "TEXT"
           },
           {
-            "fieldPath": "author",
-            "columnName": "author",
-            "affinity": "TEXT",
-            "notNull": true
+            "fieldPath": "by",
+            "columnName": "by",
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "score",
             "columnName": "score",
-            "affinity": "INTEGER",
-            "notNull": true
+            "affinity": "INTEGER"
           },
           {
             "fieldPath": "time",
@@ -46,14 +44,12 @@
           {
             "fieldPath": "descendants",
             "columnName": "descendants",
-            "affinity": "INTEGER",
-            "notNull": true
+            "affinity": "INTEGER"
           },
           {
             "fieldPath": "kids",
             "columnName": "kids",
-            "affinity": "TEXT",
-            "notNull": true
+            "affinity": "TEXT"
           }
         ],
         "primaryKey": {
@@ -114,7 +110,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '20ed77b950c484975d46590124545ef2')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'e4b036fe759560ae7d17df17297e9ef5')"
     ]
   }
 }

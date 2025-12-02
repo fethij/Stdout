@@ -34,6 +34,7 @@ import com.slack.circuit.runtime.presenter.Presenter
 import com.tewelde.stdout.common.di.UiScope
 import com.tewelde.stdout.core.data.StoryRepository
 import com.tewelde.stdout.core.model.Story
+import com.tewelde.stdout.core.navigation.DetailsScreen
 import com.tewelde.stdout.core.navigation.FeedScreen
 import kotlinx.coroutines.launch
 import me.tatarka.inject.annotations.Inject
@@ -65,7 +66,7 @@ class FeedPresenter(
 
         LaunchedEffect(Unit) {
             isLoading = true
-            // stories = repository.getTopStories()
+             stories = repository.getTopStories()
             isLoading = false
         }
 
@@ -76,7 +77,7 @@ class FeedPresenter(
             when (event) {
                 is FeedEvent.OpenStory -> {
                     // Navigate to details
-                    // navigator.goTo(DetailsScreen(event.id))
+                     navigator.goTo(DetailsScreen(event.id))
                 }
 
                 FeedEvent.Refresh -> {
@@ -132,14 +133,6 @@ fun StoryItem(story: Story, onClick: () -> Unit) {
             .padding(16.dp)
     ) {
         Row {
-            Text(
-                text = "01", // Rank placeholder
-                color = Color(0xFFFF6600),
-                fontFamily = FontFamily.Monospace,
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp
-            )
-            Spacer(modifier = Modifier.width(12.dp))
             Column {
                 Text(
                     text = story.title,
@@ -150,12 +143,13 @@ fun StoryItem(story: Story, onClick: () -> Unit) {
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "${story.score} points :: ${story.author} :: 3h ago",
+                    text = "${story.score} points :: ${story.by} :: 3h ago", // TODO format time and make it observable
                     color = Color.Gray,
                     fontFamily = FontFamily.Monospace,
                     fontSize = 12.sp
                 )
             }
+            // TODO add comment count
         }
     }
 }

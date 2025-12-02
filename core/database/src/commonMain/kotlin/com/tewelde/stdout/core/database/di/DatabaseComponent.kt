@@ -22,6 +22,7 @@ interface DatabaseComponent : PlatformDatabaseComponent {
         builder: RoomDatabase.Builder<HackerNewsDatabase>,
         dispatcherProvider: DispatcherProvider
     ): HackerNewsDatabase = builder
+        .fallbackToDestructiveMigration(true)
         .setDriver(BundledSQLiteDriver())
         .setQueryCoroutineContext(dispatcherProvider.io)
         .build()

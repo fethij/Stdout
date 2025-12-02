@@ -21,6 +21,8 @@ class FeatureMultiplatformConventionPlugin : Plugin<Project> {
                 sourceSets.apply {
                     commonMain {
                         dependencies {
+                            implementation(project(":core:common"))
+
                             implementation(libs.findBundle("kotlinInjectAnvil").get())
                             implementation(libs.findBundle("circuit").get())
                         }

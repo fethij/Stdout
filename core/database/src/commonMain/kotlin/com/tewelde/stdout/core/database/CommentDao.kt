@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface CommentDao {
     @Query("SELECT * FROM comments WHERE id = :id")
-    suspend fun getComment(id: Long): CommentEntity?
+    fun getComment(id: Long): Flow<CommentEntity?>
 
     @Query("SELECT * FROM comments WHERE parent = :parentId")
     fun getCommentsForParent(parentId: Long): Flow<List<CommentEntity>>

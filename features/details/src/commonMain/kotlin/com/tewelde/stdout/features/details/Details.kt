@@ -231,92 +231,104 @@ fun CommentItem(
     depth: Int = 0
 ) {
     var expanded by remember { mutableStateOf(true) }
+    val indent = minOf(depth, 8) * 8
 
-    Row(
-        modifier = Modifier
-            .padding(start = (depth * 8).dp)
-            .animateContentSize()
+    Column(
+        modifier = Modifier.animateContentSize()
     ) {
-        // Vertical line for indentation
-        if (depth > 0) {
-            Box(
-                modifier = Modifier
-                    .width(1.dp)
-                    .height(20.dp) // Approximate height or use IntrinsicSize
-                    .background(Color.Gray)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-        }
-
-        Column {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .clickable {
-                        expanded = !expanded
-                        if (expanded && comment.kids.isNotEmpty() && replies[comment.id] == null) {
-                            onExpand(comment.id, comment.kids)
-                        }
+        Row(
+            modifier = Modifier
+                .padding(start = indent.dp)
+                .clickable {
+                    expanded = !expanded
+                    if (expanded && comment.kids.isNotEmpty() && replies[comment.id] == null) {
+                        onExpand(comment.id, comment.kids)
                     }
-                    .padding(vertical = 4.dp)
-            ) {
-                val isOp = comment.author == storyAuthor
-                Text(
-                    text = if (isOp) "[${comment.author} [OP]]" else "[${comment.author}]",
-                    color = if (isOp) Color(0xFFFFA500) else Color.Gray,
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 14.sp
+                }
+                .padding(vertical = 4.dp)
+        ) {
+            // Vertical line for indentation visual (optional, maybe just space is enough for now to fix the issue)
+            // If we want the line, it needs to be careful about height.
+            // For now, let's stick to simple padding indentation as per plan to fix the "too close to right" issue.
+            // The previous implementation had a line. Let's try to keep it but inside the row?
+            // Actually, the previous implementation added padding recursively.
+            // Here we calculate absolute padding.
+
+            if (depth > 0) {
+                Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .height(20.dp)
+                        .background(Color.Gray)
                 )
-                if (!expanded) {
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val isOp = comment.author == storyAuthor
                     Text(
-                        text = " [+${comment.kids.size}]",
-                        color = Color.Gray,
+                        text = if (isOp) "[${comment.author} [OP]]" else "[${comment.author}]",
+                        color = if (isOp) Color(0xFFFFA500) else Color.Gray,
                         fontFamily = FontFamily.Monospace,
                         fontSize = 14.sp
                     )
+                    if (!expanded) {
+                        Text(
+                            text = " [+${comment.kids.size}]",
+                            color = Color.Gray,
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+
+                if (expanded) {
+                    Text(
+                        text = comment.text,
+                        color = Color.LightGray,
+                        fontFamily = FontFamily.Monospace,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
                 }
             }
+        }
 
-            if (expanded) {
-                Text(
-                    text = comment.text,
-                    color = Color.LightGray,
-                    fontFamily = FontFamily.Monospace,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-
-                val commentReplies = replies[comment.id]
-                if (commentReplies != null) {
-                    commentReplies.forEach { reply ->
-                        CommentItem(
-                            comment = reply,
-                            replies = replies,
-                            loadingReplies = loadingReplies,
-                            storyAuthor = storyAuthor,
-                            onExpand = onExpand,
-                            depth = depth + 1
-                        )
+        if (expanded) {
+            val commentReplies = replies[comment.id]
+            if (commentReplies != null) {
+                commentReplies.forEach { reply ->
+                    CommentItem(
+                        comment = reply,
+                        replies = replies,
+                        loadingReplies = loadingReplies,
+                        storyAuthor = storyAuthor,
+                        onExpand = onExpand,
+                        depth = depth + 1
+                    )
+                }
+            } else if (comment.kids.isNotEmpty()) {
+                if (loadingReplies.contains(comment.id)) {
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .padding(start = (indent + 8).dp) // Indent spinner too
+                            .height(20.dp)
+                            .width(20.dp),
+                        color = MaterialTheme.colorScheme.secondary,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    // Trigger load if expanded and not loaded
+                    LaunchedEffect(Unit) {
+                        onExpand(comment.id, comment.kids)
                     }
-                } else if (comment.kids.isNotEmpty()) {
-                    if (loadingReplies.contains(comment.id)) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.padding(start = 8.dp).height(20.dp).width(20.dp),
-                            color = MaterialTheme.colorScheme.secondary,
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        // Trigger load if expanded and not loaded
-                        LaunchedEffect(Unit) {
-                            onExpand(comment.id, comment.kids)
-                        }
-                        Text(
-                            text = "Loading replies...",
-                            color = Color.DarkGray,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 12.sp,
-                            modifier = Modifier.padding(start = 8.dp)
-                        )
-                    }
+                    Text(
+                        text = "Loading replies...",
+                        color = Color.DarkGray,
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(start = (indent + 8).dp)
+                    )
                 }
             }
         }

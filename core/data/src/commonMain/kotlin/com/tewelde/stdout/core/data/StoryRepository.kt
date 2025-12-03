@@ -3,6 +3,8 @@ package com.tewelde.stdout.core.data
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
+import com.fleeksoft.ksoup.Ksoup
+import com.fleeksoft.ksoup.network.parseGetRequest
 import com.tewelde.stdout.common.coroutines.DispatcherProvider
 import com.tewelde.stdout.core.database.CommentDao
 import com.tewelde.stdout.core.database.StoryDao
@@ -50,7 +52,13 @@ class StoryRepository(
             },
             writer = { id: Long, story: NetworkStory ->
                 withContext(dispatcherProvider.databaseWrite) {
-                    storyDao.insertStory(story.toEntity())
+                    val entity = story.toEntity()
+                    // Check if we already have this story and if it has metadata
+                    // If we do, we preserve the metadata
+                    // This part is tricky with Store, as writer replaces the data.
+                    // We can check inside toDomain/toEntity or do a read before write.
+                    // But here, we just write. The parsing will happen and update the entity later.
+                    storyDao.insertStory(entity)
                 }
             },
             delete = { id: Long ->
@@ -103,7 +111,7 @@ class StoryRepository(
             }
 
             ids.take(20).map { id ->
-                storyStore.get(id)
+                getStory(id)
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -114,7 +122,7 @@ class StoryRepository(
             cachedIds.take(20).mapNotNull { id ->
                 // We might not have the story details cached, but we try
                 try {
-                    storyStore.get(id)
+                    getStory(id)
                 } catch (e: Exception) {
                     e.printStackTrace()
                     null
@@ -154,7 +162,67 @@ class StoryRepository(
     }
 
     suspend fun getStory(id: Long): Story {
-        return storyStore.get(id)
+        val story = storyStore.get(id)
+
+        // Check if we need to parse metadata
+        val url = story.url
+        if (url != null && story.imageUrl == null) {
+            try {
+                // Parse in background
+                val parsedMetadata = parseMetadata(url)
+                if (parsedMetadata != null) {
+                    val updatedStory = story.copy(
+                        imageUrl = parsedMetadata.imageUrl,
+                        siteName = parsedMetadata.siteName,
+                        description = parsedMetadata.description
+                    )
+                    // Update DB
+                     withContext(dispatcherProvider.databaseWrite) {
+                        storyDao.insertStory(updatedStory.toEntity())
+                    }
+                    return updatedStory
+                }
+            } catch (e: Exception) {
+                // Ignore parsing errors
+                e.printStackTrace()
+            }
+        }
+
+        return story
+    }
+
+    data class ParsedMetadata(
+        val imageUrl: String?,
+        val siteName: String?,
+        val description: String?
+    )
+
+    private suspend fun parseMetadata(url: String): ParsedMetadata? {
+        return withContext(dispatcherProvider.io) {
+            try {
+                val doc = Ksoup.parseGetRequest(url = url)
+                val ogImage = doc.select("meta[property=og:image]").attr("content").takeIf { it.isNotEmpty() }
+                val ogSiteName = doc.select("meta[property=og:site_name]").attr("content").takeIf { it.isNotEmpty() }
+                val ogDescription = doc.select("meta[property=og:description]").attr("content").takeIf { it.isNotEmpty() }
+
+                // Fallback for image
+                val image = ogImage ?: doc.select("link[rel=image_src]").attr("href").takeIf { it.isNotEmpty() }
+
+                // Fallback for description
+                 val description = ogDescription ?: doc.select("meta[name=description]").attr("content").takeIf { it.isNotEmpty() }
+
+                // Fallback for site name (domain)
+                val siteName = ogSiteName ?: try {
+                     // simplistic domain extraction
+                     val domain = url.substringAfter("://").substringBefore("/")
+                     domain
+                } catch (e: Exception) { null }
+
+                ParsedMetadata(image, siteName, description)
+            } catch (e: Exception) {
+                null
+            }
+        }
     }
 
     suspend fun getComment(id: Long): Comment {
@@ -204,7 +272,26 @@ class StoryRepository(
             score = score,
             time = time,
             descendants = descendants,
-            kids = kids?.split(",")?.map { it.toLong() }
+            kids = kids?.split(",")?.map { it.toLong() },
+            imageUrl = imageUrl,
+            siteName = siteName,
+            description = description
+        )
+    }
+
+    private fun Story.toEntity(): StoryEntity {
+        return StoryEntity(
+            id = id,
+            title = title,
+            url = url,
+            by = by,
+            score = score,
+            time = time,
+            descendants = descendants,
+            kids = kids?.joinToString(","),
+            imageUrl = imageUrl,
+            siteName = siteName,
+            description = description
         )
     }
 
@@ -217,7 +304,10 @@ class StoryRepository(
             score = score ?: 0,
             time = time,
             descendants = descendants,
-            kids = kids?.joinToString(",")
+            kids = kids?.joinToString(","),
+            imageUrl = null,
+            siteName = null,
+            description = null
         )
     }
 }

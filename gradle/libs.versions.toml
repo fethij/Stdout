@@ -27,8 +27,11 @@ core = "1.7.0"
 browser = "1.9.0"
 paging = "3.4.0-alpha04"
 compose-foundation = "1.9.5"
+ksoup = "0.2.5"
 
 [libraries]
+ksoup = { module = "com.fleeksoft.ksoup:ksoup", version.ref = "ksoup" }
+ksoup-network = { module = "com.fleeksoft.ksoup:ksoup-network", version.ref = "ksoup" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlin-testJunit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
 junit = { module = "junit:junit", version.ref = "junit" }

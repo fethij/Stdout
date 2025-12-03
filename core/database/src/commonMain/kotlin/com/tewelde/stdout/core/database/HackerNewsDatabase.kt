@@ -11,7 +11,7 @@ import androidx.room.RoomDatabaseConstructor
         CommentEntity::class,
         StoryTypeEntity::class
     ],
-    version = 1
+    version = 2
 )
 @ConstructedBy(HackerNewsDatabaseConstructor::class)
 abstract class HackerNewsDatabase : RoomDatabase() {

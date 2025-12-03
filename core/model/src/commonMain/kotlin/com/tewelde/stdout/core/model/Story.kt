@@ -9,6 +9,8 @@ data class Story(
     val score: Int,
     val time: Long,
     val descendants: Int? = null,
-    val kids: List<Long>? = null
+    val kids: List<Long>? = null,
+    val imageUrl: String? = null,
+    val siteName: String? = null,
+    val description: String? = null
 )
-

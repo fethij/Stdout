@@ -150,7 +150,8 @@ fun Feed(state: FeedState, modifier: Modifier = Modifier) {
                     if (story != null) {
                         StoryItem(
                             story,
-                            onClick = { state.eventSink(FeedEvent.OpenStory(story)) },
+                            onClick = { state.eventSink(FeedEvent.OpenComments(story)) },
+                            onUrlClick = { state.eventSink(FeedEvent.OpenStory(story)) },
                             onCommentClick = { state.eventSink(FeedEvent.OpenComments(story)) },
                             modifier = Modifier
                                 .fillMaxWidth()

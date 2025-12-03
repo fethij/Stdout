@@ -12,5 +12,8 @@ data class StoryEntity(
     val score: Int,
     val time: Long,
     val descendants: Int?,
-    val kids: String? // Comma separated IDs
+    val kids: String?, // Comma separated IDs
+    val imageUrl: String? = null,
+    val siteName: String? = null,
+    val description: String? = null
 )

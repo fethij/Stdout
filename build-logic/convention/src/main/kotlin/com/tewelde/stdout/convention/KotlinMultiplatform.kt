@@ -8,7 +8,7 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 internal fun Project.configureKotlinMultiplatform(
     extension: KotlinMultiplatformExtension
 ) = extension.apply {
-    jvmToolchain(17)
+    jvmToolchain(21)
     applyDefaultHierarchyTemplate()
 
     if (pluginManager.hasPlugin("com.android.library")) {

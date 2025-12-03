@@ -13,6 +13,8 @@ kotlin {
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.bundles.kotlinInjectAnvil)
             implementation(libs.androidx.paging.common)
+            implementation(libs.ksoup)
+            implementation(libs.ksoup.network)
         }
     }
 }

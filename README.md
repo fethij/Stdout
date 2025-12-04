@@ -35,12 +35,15 @@ A modern Hacker News client with a terminal-inspired interface, built with Kotli
 
 ## Architecture
 
-Clean architecture with multi-module structure:
-
+**Multi-modular** - Organized by layer and feature for scalability, parallel builds, and clear boundaries:
 - `core/*` - Shared business logic, data layer, design system
 - `features/*` - Feature modules with Circuit presenters/UI
 - `app/android` - Android application entry point
 - `shared` - Multiplatform shared code
+
+**Convention Plugins** - Gradle build logic centralized in `build-logic/` to enforce consistency across modules and reduce build file duplication.
+
+**Offline-first** - Store5 manages network/cache strategies, Room provides local persistence, ensuring the app works seamlessly without connectivity.
 
 Follows unidirectional data flow with Circuit's Presenter pattern, repository pattern for data management, and reactive streams with Kotlin Flow.
 

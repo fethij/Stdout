@@ -2,6 +2,11 @@
 
 A modern Hacker News client with a terminal-inspired interface.
 
+<p style="text-align: center;">
+  <img src="assets/feed.png" width="250"/>
+  <img src="assets/detail.png" width="250"/>
+</p>
+
 ## Tech Stack
 
 **Kotlin Multiplatform** - Share logic across platforms

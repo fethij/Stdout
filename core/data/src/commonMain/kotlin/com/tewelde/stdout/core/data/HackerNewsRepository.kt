@@ -16,6 +16,9 @@ import com.tewelde.stdout.core.model.StoryType
 import com.tewelde.stdout.core.network.HackerNewsApi
 import com.tewelde.stdout.core.network.model.NetworkComment
 import com.tewelde.stdout.core.network.model.NetworkStory
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -200,50 +203,46 @@ class RealHackerNewsRepository(
                 commentDao.insertComments(entities)
             }
         }
-        )
-    ).disableCache().build()
+        ))
+        .disableCache()
+        .build()
 
-    private suspend fun fetchNetworkCommentsRecursively(ids: List<Long>): List<NetworkComment> {
-        if (ids.isEmpty()) return emptyList()
+    private suspend fun fetchNetworkCommentsRecursively(
+        ids: List<Long>
+    ): List<NetworkComment> = coroutineScope {
+        if (ids.isEmpty()) return@coroutineScope emptyList()
 
         // Fetch current level
-        val currentLevelComments = ids.mapNotNull { id ->
-            try {
-                api.getComment(id)
-            } catch (e: Exception) {
-                null
+        val currentLevelComments = ids.map { id ->
+            async {
+                try {
+                    api.getComment(id)
+                } catch (e: Exception) {
+                    null
+                }
             }
-        }
+        }.awaitAll().filterNotNull()
 
         // Recursively fetch children
-        val childComments = currentLevelComments.flatMap { comment ->
-            comment.kids?.let { childrenIds ->
-                fetchNetworkCommentsRecursively(childrenIds)
-            } ?: emptyList()
-        }
+        val childComments = currentLevelComments.map { comment ->
+            async {
+                comment.kids?.let { childrenIds ->
+                    fetchNetworkCommentsRecursively(childrenIds)
+                } ?: emptyList()
+            }
+        }.awaitAll().flatten()
 
-        return currentLevelComments + childComments
+        currentLevelComments + childComments
     }
 
     override fun observeComments(
-        storyId: Long, refresh: Boolean
+        storyId: Long,
+        refresh: Boolean
     ): Flow<StoreReadResponse<List<Comment>>> {
         return commentStore.stream(
             StoreReadRequest.cached(
                 key = storyId, refresh = refresh
             )
-        )
-    }
-
-    suspend fun getComment(id: Long): Comment {
-        val networkComment = api.getComment(id)
-        return Comment(
-            id = networkComment.id,
-            text = networkComment.text ?: "",
-            author = networkComment.by ?: "",
-            time = networkComment.time ?: 0,
-            parent = networkComment.parent ?: 0,
-            kids = networkComment.kids ?: emptyList()
         )
     }
 

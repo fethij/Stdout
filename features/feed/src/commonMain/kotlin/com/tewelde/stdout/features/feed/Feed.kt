@@ -23,7 +23,6 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -76,14 +75,14 @@ class FeedPresenter(
     @Composable
     override fun present(): FeedState {
         var selectedType by rememberRetained { mutableStateOf(StoryType.TOP) }
-
-        val stories = remember(selectedType) {
+        val stories = rememberRetained(selectedType) {
             repository.observeStories(selectedType)
                 .catch {
                     // TODO catch LoadState.Error from PagingSource
                     Logger.e(it) { "Observing stories failed" }
                 }
         }
+
         return FeedState(
             stories = stories,
             selectedType = selectedType

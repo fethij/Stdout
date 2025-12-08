@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "01985cbbf22cc03eb2d6069f0e02d466",
+    "identityHash": "d0c1775eed5ce8d12bcb4d3355d39059",
     "entities": [
       {
         "tableName": "stories",
@@ -63,11 +63,17 @@
       },
       {
         "tableName": "comments",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `text` TEXT NOT NULL, `author` TEXT NOT NULL, `time` INTEGER NOT NULL, `parent` INTEGER NOT NULL, `kids` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `storyId` INTEGER NOT NULL, `text` TEXT NOT NULL, `author` TEXT NOT NULL, `time` INTEGER NOT NULL, `parent` INTEGER NOT NULL, `kids` TEXT NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
             "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "storyId",
+            "columnName": "storyId",
             "affinity": "INTEGER",
             "notNull": true
           },
@@ -136,7 +142,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '01985cbbf22cc03eb2d6069f0e02d466')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd0c1775eed5ce8d12bcb4d3355d39059')"
     ]
   }
 }

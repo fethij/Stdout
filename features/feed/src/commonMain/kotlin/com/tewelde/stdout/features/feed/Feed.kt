@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.paging.LoadState
 import androidx.paging.PagingData
 import androidx.paging.compose.collectAsLazyPagingItems
+import co.touchlab.kermit.Logger
 import com.slack.circuit.codegen.annotations.CircuitInject
 import com.slack.circuit.retained.rememberRetained
 import com.slack.circuit.runtime.CircuitUiEvent
@@ -41,7 +42,7 @@ import com.slack.circuit.runtime.CircuitUiState
 import com.slack.circuit.runtime.Navigator
 import com.slack.circuit.runtime.presenter.Presenter
 import com.tewelde.stdout.common.di.UiScope
-import com.tewelde.stdout.core.data.StoryRepository
+import com.tewelde.stdout.core.data.HackerNewsRepository
 import com.tewelde.stdout.core.designsystem.theme.component.StoryItem
 import com.tewelde.stdout.core.model.Story
 import com.tewelde.stdout.core.model.StoryType
@@ -49,6 +50,7 @@ import com.tewelde.stdout.core.navigation.DetailsScreen
 import com.tewelde.stdout.core.navigation.FeedScreen
 import com.tewelde.stdout.core.navigation.UrlScreen
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import me.tatarka.inject.annotations.Assisted
 import me.tatarka.inject.annotations.Inject
 
@@ -68,7 +70,7 @@ sealed interface FeedEvent : CircuitUiEvent {
 @Inject
 @CircuitInject(FeedScreen::class, UiScope::class)
 class FeedPresenter(
-    private val repository: StoryRepository,
+    private val repository: HackerNewsRepository,
     @Assisted private val navigator: Navigator
 ) : Presenter<FeedState> {
     @Composable
@@ -76,9 +78,12 @@ class FeedPresenter(
         var selectedType by rememberRetained { mutableStateOf(StoryType.TOP) }
 
         val stories = remember(selectedType) {
-            repository.getStoriesPaged(selectedType)
+            repository.observeStories(selectedType)
+                .catch {
+                    // TODO catch LoadState.Error from PagingSource
+                    Logger.e(it) { "Observing stories failed" }
+                }
         }
-
         return FeedState(
             stories = stories,
             selectedType = selectedType

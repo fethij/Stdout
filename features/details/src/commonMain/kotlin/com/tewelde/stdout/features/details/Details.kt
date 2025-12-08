@@ -20,7 +20,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,39 +32,61 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.paging.LoadState
-import androidx.paging.PagingData
-import androidx.paging.compose.collectAsLazyPagingItems
 import com.slack.circuit.codegen.annotations.CircuitInject
 import com.slack.circuit.runtime.CircuitUiEvent
 import com.slack.circuit.runtime.CircuitUiState
 import com.slack.circuit.runtime.Navigator
 import com.slack.circuit.runtime.presenter.Presenter
+import com.tewelde.stdout.common.LoadState
 import com.tewelde.stdout.common.di.UiScope
-import com.tewelde.stdout.core.data.StoryRepository
 import com.tewelde.stdout.core.designsystem.theme.component.StoryItem
+import com.tewelde.stdout.core.domain.ObserveCommentsUseCase
+import com.tewelde.stdout.core.domain.ObserveStoryUseCase
 import com.tewelde.stdout.core.model.Comment
 import com.tewelde.stdout.core.model.Story
 import com.tewelde.stdout.core.navigation.DetailsScreen
 import com.tewelde.stdout.core.navigation.UrlScreen
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.map
 import me.tatarka.inject.annotations.Assisted
 import me.tatarka.inject.annotations.Inject
 
+
 data class DetailsState(
-    val story: Story?,
-    val comments: Flow<PagingData<Comment>>?,
-    val replies: Map<Long, List<Comment>> = emptyMap(),
-    val loadingReplies: Set<Long> = emptySet(),
-    val isLoading: Boolean,
-    val eventSink: (DetailsEvent) -> Unit
+    val storyLoadState: StoryLoadState,
+    val commentsLoadState: CommentsLoadState,
+    val eventSink: (DetailsEvent) -> Unit,
 ) : CircuitUiState
+
+
+sealed interface CommentsLoadState : CircuitUiState {
+    data object Empty : CommentsLoadState
+    data object Loading : CommentsLoadState
+    data class Error(
+        val message: String,
+        val eventSink: (DetailsEvent) -> Unit,
+    ) : CommentsLoadState
+
+    data class Success(
+        val comments: List<Comment>,
+        val eventSink: (DetailsEvent) -> Unit,
+    ) : CommentsLoadState
+}
+
+sealed interface StoryLoadState : CircuitUiState {
+    data object Loading : StoryLoadState
+    data class Error(
+        val message: String,
+        val eventSink: (DetailsEvent) -> Unit,
+    ) : StoryLoadState
+
+    data class Success(
+        val story: Story,
+        val eventSink: (DetailsEvent) -> Unit,
+    ) : StoryLoadState
+}
 
 sealed interface DetailsEvent : CircuitUiEvent {
     data object NavigateUp : DetailsEvent
-    data class LoadReplies(val commentId: Long, val kidIds: List<Long>) : DetailsEvent
-
     data class OpenStory(val story: Story) : DetailsEvent
 }
 
@@ -72,64 +94,76 @@ sealed interface DetailsEvent : CircuitUiEvent {
 @CircuitInject(DetailsScreen::class, UiScope::class)
 class DetailsPresenter(
     @Assisted private val screen: DetailsScreen,
-    private val repository: StoryRepository,
+    private val observeComments: ObserveCommentsUseCase,
+    private val observeStory: ObserveStoryUseCase,
     @Assisted private val navigator: Navigator
 ) : Presenter<DetailsState> {
     @Composable
     override fun present(): DetailsState {
-        var story by remember { mutableStateOf<Story?>(null) }
-        var isLoading by remember { mutableStateOf(false) }
-        var replies by remember { mutableStateOf<Map<Long, List<Comment>>>(emptyMap()) }
-        var loadingReplies by remember { mutableStateOf<Set<Long>>(emptySet()) }
-        val scope = androidx.compose.runtime.rememberCoroutineScope()
-
-        val comments = remember(story) {
-            story?.kids?.let { kids ->
-                repository.getCommentsPaged(kids)
-            }
-        }
-
-        LaunchedEffect(screen.storyId) {
-            isLoading = true
-            // In a real app, we'd have a method to get a single story, potentially cached
-            // For now, we assume it might be in the store or we fetch it
-            story = repository.getStory(screen.storyId)
-            isLoading = false
-        }
-
-        return DetailsState(
-            story = story,
-            comments = comments,
-            replies = replies,
-            loadingReplies = loadingReplies,
-            isLoading = isLoading
-        ) { event ->
+        val eventSink: (DetailsEvent) -> Unit = { event ->
             when (event) {
                 DetailsEvent.NavigateUp -> navigator.pop()
-                is DetailsEvent.LoadReplies -> {
-                    scope.launch {
-                        loadingReplies = loadingReplies + event.commentId
-                        val fetchedReplies = repository.getComments(event.kidIds)
-                        replies = replies + (event.commentId to fetchedReplies)
-                        loadingReplies = loadingReplies - event.commentId
+                is DetailsEvent.OpenStory -> event.story.url?.let { navigator.goTo(UrlScreen(it)) }
+            }
+        }
+        val commentsState by observeComments(screen.storyId)
+            .map { loadState ->
+                when (loadState) {
+                    is LoadState.Loading -> CommentsLoadState.Loading
+                    is LoadState.Loaded<*> -> {
+                        val comments = loadState.data as List<Comment>
+                        if (comments.isEmpty()) {
+                            CommentsLoadState.Empty
+                        } else {
+                            CommentsLoadState.Success(
+                                comments = comments,
+                                eventSink = eventSink
+                            )
+                        }
                     }
-                }
 
-                is DetailsEvent.OpenStory -> {
-                    event.story.url?.let {
-                        navigator.goTo(UrlScreen(it))
+                    is LoadState.Error -> {
+                        CommentsLoadState.Error(
+                            message = loadState.error.message ?: "Unknown error",
+                            eventSink = eventSink
+                        )
                     }
                 }
             }
-        }
+            .collectAsState(initial = CommentsLoadState.Loading)
+
+        val storyState by observeStory(screen.storyId)
+            .map { loadState ->
+                when (loadState) {
+                    is LoadState.Loading -> StoryLoadState.Loading
+                    is LoadState.Loaded<*> -> {
+                        StoryLoadState.Success(
+                            story = loadState.data as Story,
+                            eventSink = eventSink
+                        )
+                    }
+
+                    is LoadState.Error -> {
+                        StoryLoadState.Error(
+                            message = loadState.error.message ?: "Unknown error",
+                            eventSink = eventSink
+                        )
+                    }
+                }
+            }
+            .collectAsState(initial = StoryLoadState.Loading)
+
+        return DetailsState(
+            storyLoadState = storyState,
+            commentsLoadState = commentsState,
+            eventSink = eventSink
+        )
     }
 }
 
 @Composable
 @CircuitInject(DetailsScreen::class, UiScope::class)
 fun Details(state: DetailsState, modifier: Modifier = Modifier) {
-    val lazyPagingItems = state.comments?.collectAsLazyPagingItems()
-
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -150,7 +184,7 @@ fun Details(state: DetailsState, modifier: Modifier = Modifier) {
             }
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "story",
+                text = "Story",
                 color = Color.White,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
@@ -158,61 +192,120 @@ fun Details(state: DetailsState, modifier: Modifier = Modifier) {
             )
         }
 
-        Text(
-            text = state.story?.title ?: "Loading...",
-            color = Color.White,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = FontFamily.Monospace,
-            modifier = Modifier
-                .padding(bottom = 8.dp)
-                .clickable {
-                    state.story?.let {
-                        state.eventSink(DetailsEvent.OpenStory(it))
-                    }
-                }
-        )
+        // Story Section
+        when (val storyState = state.storyLoadState) {
+            is StoryLoadState.Loading -> {
+                Text(
+                    text = "Loading Story...",
+                    color = MaterialTheme.colorScheme.secondary,
+                    fontFamily = FontFamily.Monospace
+                )
+            }
 
-        if (state.story != null) {
-            StoryItem(
-                state.story,
-                onClick = { state.eventSink(DetailsEvent.OpenStory(state.story)) },
-                showTitle = false,
-                showComments = false
-            )
+            is StoryLoadState.Error -> {
+                Text(
+                    text = "Error: ${storyState.message}",
+                    color = MaterialTheme.colorScheme.error,
+                    fontFamily = FontFamily.Monospace
+                )
+            }
+
+            is StoryLoadState.Success -> {
+                val story = storyState.story
+                Text(
+                    text = story.title,
+                    color = MaterialTheme.colorScheme.secondary,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace,
+                    modifier = Modifier
+                        .padding(bottom = 8.dp)
+                        .clickable {
+                            state.eventSink(DetailsEvent.OpenStory(story))
+                        }
+                )
+
+                StoryItem(
+                    story,
+                    onClick = { state.eventSink(DetailsEvent.OpenStory(story)) },
+                    showTitle = false,
+                    showComments = false
+                )
+            }
         }
 
-        if (lazyPagingItems != null) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize()
-            ) {
-                if (lazyPagingItems.loadState.refresh == LoadState.Loading) {
-                    item {
-                        Box(
-                            modifier = Modifier.fillParentMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Comments Section
+        when (val commentsState = state.commentsLoadState) {
+            is CommentsLoadState.Loading -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                }
+            }
+
+            is CommentsLoadState.Error -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = "Error loading comments: ${commentsState.message}",
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+
+            is CommentsLoadState.Empty -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = "No comments yet.",
+                        color = Color.Gray
+                    )
+                }
+            }
+
+            is CommentsLoadState.Success -> {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    val commentMap = commentsState.comments.associateBy { it.id }
+                    // If story is loaded, filter by parent being storyId. 
+                    // But if story load failed or is loading, we might still have comments if we only know the id?
+                    // Actually, comments usually require the story ID to be filtered properly if we have a flat list of EVERYTHING in DB.
+                    // But `observeComments` filters by `storyId` via the Store/DAO relation. So `commentsState.comments` ONLY contains comments for this story.
+                    // So we can find roots by checking which ones have no parent in this list OR parent == storyId.
+                    // However, `parent` field in Comment model refers to story ID for top level comments.
+
+                    val topLevelComments = commentsState.comments.filter { comment ->
+                        // Top level comments have parent == storyId
+                        // We don't have storyId readily available in `CommentsLoadState.Success` here unless we pass it or infer it.
+                        // But we know `commentsState.comments` are children of the current story.
+                        // A simplistic check: parent is NOT in the map (it's the story) OR parent is explicitly the story ID.
+                        // Since we don't pass storyID to this UI state easily (it's in screen), let's rely on the property that
+                        // their parent ID is not present in the `commentMap` (because the story isn't a comment).
+                        !commentMap.containsKey(comment.parent)
+                    }
+
+                    fun buildFlatList(
+                        comments: List<Comment>,
+                        depth: Int
+                    ): List<Pair<Comment, Int>> {
+                        return comments.flatMap { comment ->
+                            listOf(comment to depth) + buildFlatList(
+                                comment.kids.mapNotNull { commentMap[it] },
+                                depth + 1
+                            )
                         }
                     }
-                }
 
-                items(lazyPagingItems.itemCount) { index ->
-                    val comment = lazyPagingItems[index]
-                    if (comment != null) {
+                    val flatComments = buildFlatList(topLevelComments, 0)
+
+                    items(flatComments.size) { index ->
+                        val (comment, depth) = flatComments[index]
                         CommentItem(
                             comment = comment,
-                            replies = state.replies,
-                            loadingReplies = state.loadingReplies,
-                            storyAuthor = state.story?.by,
-                            onExpand = { id, kids ->
-                                state.eventSink(
-                                    DetailsEvent.LoadReplies(
-                                        id,
-                                        kids
-                                    )
-                                )
-                            }
+                            depth = depth
                         )
                     }
                 }
@@ -224,11 +317,7 @@ fun Details(state: DetailsState, modifier: Modifier = Modifier) {
 @Composable
 fun CommentItem(
     comment: Comment,
-    replies: Map<Long, List<Comment>>,
-    loadingReplies: Set<Long>,
-    storyAuthor: String?,
-    onExpand: (Long, List<Long>) -> Unit,
-    depth: Int = 0
+    depth: Int
 ) {
     var expanded by remember { mutableStateOf(true) }
     val indent = minOf(depth, 8) * 8
@@ -239,21 +328,9 @@ fun CommentItem(
         Row(
             modifier = Modifier
                 .padding(start = indent.dp)
-                .clickable {
-                    expanded = !expanded
-                    if (expanded && comment.kids.isNotEmpty() && replies[comment.id] == null) {
-                        onExpand(comment.id, comment.kids)
-                    }
-                }
+                .clickable { expanded = !expanded }
                 .padding(vertical = 4.dp)
         ) {
-            // Vertical line for indentation visual (optional, maybe just space is enough for now to fix the issue)
-            // If we want the line, it needs to be careful about height.
-            // For now, let's stick to simple padding indentation as per plan to fix the "too close to right" issue.
-            // The previous implementation had a line. Let's try to keep it but inside the row?
-            // Actually, the previous implementation added padding recursively.
-            // Here we calculate absolute padding.
-
             if (depth > 0) {
                 Box(
                     modifier = Modifier
@@ -266,21 +343,12 @@ fun CommentItem(
 
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    val isOp = comment.author == storyAuthor
                     Text(
-                        text = if (isOp) "[${comment.author} [OP]]" else "[${comment.author}]",
-                        color = if (isOp) Color(0xFFFFA500) else Color.Gray,
+                        text = "[${comment.author}]",
+                        color = Color.Gray,
                         fontFamily = FontFamily.Monospace,
                         fontSize = 14.sp
                     )
-                    if (!expanded) {
-                        Text(
-                            text = " [+${comment.kids.size}]",
-                            color = Color.Gray,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 14.sp
-                        )
-                    }
                 }
 
                 if (expanded) {
@@ -289,45 +357,6 @@ fun CommentItem(
                         color = Color.LightGray,
                         fontFamily = FontFamily.Monospace,
                         modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                }
-            }
-        }
-
-        if (expanded) {
-            val commentReplies = replies[comment.id]
-            if (commentReplies != null) {
-                commentReplies.forEach { reply ->
-                    CommentItem(
-                        comment = reply,
-                        replies = replies,
-                        loadingReplies = loadingReplies,
-                        storyAuthor = storyAuthor,
-                        onExpand = onExpand,
-                        depth = depth + 1
-                    )
-                }
-            } else if (comment.kids.isNotEmpty()) {
-                if (loadingReplies.contains(comment.id)) {
-                    CircularProgressIndicator(
-                        modifier = Modifier
-                            .padding(start = (indent + 8).dp) // Indent spinner too
-                            .height(20.dp)
-                            .width(20.dp),
-                        color = MaterialTheme.colorScheme.secondary,
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    // Trigger load if expanded and not loaded
-                    LaunchedEffect(Unit) {
-                        onExpand(comment.id, comment.kids)
-                    }
-                    Text(
-                        text = "Loading replies...",
-                        color = Color.DarkGray,
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(start = (indent + 8).dp)
                     )
                 }
             }

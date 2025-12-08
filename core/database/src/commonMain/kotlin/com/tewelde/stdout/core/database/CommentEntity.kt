@@ -6,6 +6,7 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "comments")
 data class CommentEntity(
     @PrimaryKey val id: Long,
+    val storyId: Long,
     val text: String,
     val author: String,
     val time: Long,

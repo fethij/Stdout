@@ -37,7 +37,6 @@ import software.amazon.lastmile.kotlin.inject.anvil.SingleIn
 
 
 interface HackerNewsRepository {
-    suspend fun getStories(type: StoryType, refresh: Boolean = false): List<Story>
     fun observeStories(type: StoryType): Flow<PagingData<Story>>
 
     /**
@@ -113,35 +112,6 @@ class RealHackerNewsRepository(
             )
         }
     })).build()
-
-    override suspend fun getStories(type: StoryType, refresh: Boolean): List<Story> {
-        return try {
-            val ids = if (refresh) {
-                storyListStore.fresh(type)
-            } else {
-                storyListStore.get(type)
-            }
-
-            ids.take(20).map { id ->
-                storyStore.get(id)
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            // Fallback to cached stories for the specific type
-            val cachedIds = storyTypeDao.getStoryTypeSnapshot(type.name)?.storyIds?.split(",")
-                ?.map { it.toLong() } ?: emptyList()
-
-            cachedIds.take(20).mapNotNull { id ->
-                // We might not have the story details cached, but we try
-                try {
-                    storyStore.get(id)
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    null
-                }
-            }
-        }
-    }
 
     override suspend fun getStoryIds(type: StoryType): List<Long> {
         return try {

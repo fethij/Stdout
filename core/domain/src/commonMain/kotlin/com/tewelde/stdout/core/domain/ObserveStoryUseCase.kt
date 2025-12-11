@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.filterNot
 import kotlinx.coroutines.flow.mapNotNull
 import me.tatarka.inject.annotations.Inject
 import org.mobilenativefoundation.store.store5.StoreReadResponse
+import org.mobilenativefoundation.store.store5.StoreReadResponseOrigin
 
 /**
  * Use case to observe a story.
@@ -29,6 +30,10 @@ class ObserveStoryUseCase(
                     }
 
                     is StoreReadResponse.Error -> {
+                        if (response.origin is StoreReadResponseOrigin.Fetcher) {
+                            return@mapNotNull null
+                        }
+
                         val error = when (response) {
                             is StoreReadResponse.Error.Exception -> {
                                 response.error

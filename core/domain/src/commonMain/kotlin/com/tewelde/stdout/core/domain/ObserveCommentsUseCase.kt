@@ -32,20 +32,24 @@ class ObserveCommentsUseCase(
                             LoadState.Loaded(comments)
                         }
                     }
+
                     is StoreReadResponse.Error -> {
                         val error = when (response) {
                             is StoreReadResponse.Error.Exception -> {
                                 response.error
                             }
+
                             is StoreReadResponse.Error.Message -> {
                                 Exception(response.message)
                             }
+
                             is StoreReadResponse.Error.Custom<*> -> {
                                 Exception(response.error.toString())
                             }
                         }
                         LoadState.Error(error) as LoadState<List<Comment>>
                     }
+
                     else -> null
                 }
             }

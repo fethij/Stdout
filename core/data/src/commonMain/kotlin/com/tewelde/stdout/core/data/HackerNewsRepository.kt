@@ -144,7 +144,12 @@ class RealHackerNewsRepository(
     }
 
     override suspend fun getStoryIds(type: StoryType): List<Long> {
-        return storyListStore.fresh(type)
+        return try {
+            storyListStore.fresh(type)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            storyListStore.get(type)
+        }
     }
 
     override fun observeStories(type: StoryType): Flow<PagingData<Story>> {

@@ -35,6 +35,7 @@ import androidx.paging.PagingData
 import androidx.paging.compose.collectAsLazyPagingItems
 import co.touchlab.kermit.Logger
 import com.slack.circuit.codegen.annotations.CircuitInject
+import com.slack.circuit.retained.DelicateCircuitRetainedApi
 import com.slack.circuit.retained.rememberRetained
 import com.slack.circuit.runtime.CircuitUiEvent
 import com.slack.circuit.runtime.CircuitUiState
@@ -72,6 +73,8 @@ class FeedPresenter(
     private val repository: HackerNewsRepository,
     @Assisted private val navigator: Navigator
 ) : Presenter<FeedState> {
+
+    @OptIn(DelicateCircuitRetainedApi::class)
     @Composable
     override fun present(): FeedState {
         var selectedType by rememberRetained { mutableStateOf(StoryType.TOP) }
@@ -112,6 +115,18 @@ class FeedPresenter(
     }
 }
 
+//@Composable
+//inline fun <T : Any> Flow<PagingData<T>>.rememberRetainedCachedPagingFlow(
+//    vararg inputs: Any?,
+//    scope: CoroutineScope = rememberRetainedCoroutineScope(),
+//): Flow<PagingData<T>> = rememberRetained(inputs, scope) { cachedIn(scope) }
+//
+//@Composable
+//fun rememberRetainedCoroutineScope(): CoroutineScope {
+//    return rememberRetained("coroutine_scope") {
+//        CoroutineScope(Dispatchers.Main + Job())
+//    }
+//}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -25,4 +26,8 @@ interface StoryDao {
 
     @Query("DELETE FROM stories")
     suspend fun clearAll()
+
+    @Transaction
+    @Query("SELECT * FROM stories WHERE id = :id")
+    fun getStoryWithComments(id: Long): Flow<StoryWithComments?>
 }

@@ -6,7 +6,7 @@ import com.tewelde.stdout.core.model.Story
 import com.tewelde.stdout.core.model.StoryType
 
 class StoryPagingSource(
-    private val repository: StoryRepository,
+    private val repository: HackerNewsRepository,
     private val type: StoryType
 ) : PagingSource<Int, Story>() {
 
@@ -41,6 +41,7 @@ class StoryPagingSource(
 
             val pageIds = ids.subList(start, end)
             val stories = pageIds.mapNotNull { id ->
+                // TODO should be parallel
                 try {
                     repository.getStory(id)
                 } catch (e: Exception) {

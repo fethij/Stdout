@@ -36,6 +36,7 @@ include(":core:database")
 include(":core:designsystem")
 include(":core:navigation")
 include(":core:data")
+include(":core:domain")
 
 include(":features:feed")
 include(":features:details")

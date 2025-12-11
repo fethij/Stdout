@@ -18,6 +18,7 @@ kotlin {
             api(projects.core.navigation)
             api(projects.core.designsystem)
             api(projects.core.data)
+            api(projects.core.domain)
 
             api(projects.features.feed)
             api(projects.features.details)

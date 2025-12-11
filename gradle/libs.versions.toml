@@ -1,7 +1,7 @@
 [versions]
 agp = "8.13.1"
-androidx-activity = "1.12.0"
-androidxcomposeui = "1.9.5"
+androidx-activity = "1.12.1"
+androidxcomposeui = "1.10.0"
 androidx-appcompat = "1.7.1"
 androidx-core = "1.17.0"
 androidx-espresso = "3.7.0"
@@ -26,9 +26,12 @@ runner = "1.7.0"
 core = "1.7.0"
 browser = "1.9.0"
 paging = "3.4.0-alpha04"
-compose-foundation = "1.9.5"
+compose-foundation = "1.10.0"
+modulegraph = "0.13.0"
+kermit = "2.0.8"
 
 [libraries]
+kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlin-testJunit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
 junit = { module = "junit:junit", version.ref = "junit" }
@@ -127,6 +130,7 @@ room = { id = "androidx.room", version.ref = "room" }
 kotlinxSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 kotlin-parcelize = { id = "org.jetbrains.kotlin.plugin.parcelize", version.ref = "kotlin" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+modulegraph = { id = "dev.iurysouza.modulegraph", version.ref = "modulegraph" }
 
 # Plugins defined by this project
 stdout-composeMultiplatform = { id = "com.tewelde.stdout.composeMultiplatform", version = "unspecified" }

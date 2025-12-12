@@ -4,10 +4,11 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import com.tewelde.stdout.common.coroutines.DispatcherProvider
+import com.tewelde.stdout.core.data.Mapper.toDomain
+import com.tewelde.stdout.core.data.Mapper.toEntity
 import com.tewelde.stdout.core.database.CommentDao
 import com.tewelde.stdout.core.database.CommentEntity
 import com.tewelde.stdout.core.database.StoryDao
-import com.tewelde.stdout.core.database.StoryEntity
 import com.tewelde.stdout.core.database.StoryTypeDao
 import com.tewelde.stdout.core.database.StoryTypeEntity
 import com.tewelde.stdout.core.model.Comment
@@ -20,8 +21,11 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.withContext
 import me.tatarka.inject.annotations.Inject
 import org.mobilenativefoundation.store.store5.Fetcher
@@ -29,7 +33,6 @@ import org.mobilenativefoundation.store.store5.SourceOfTruth
 import org.mobilenativefoundation.store.store5.StoreBuilder
 import org.mobilenativefoundation.store.store5.StoreReadRequest
 import org.mobilenativefoundation.store.store5.StoreReadResponse
-import org.mobilenativefoundation.store.store5.impl.extensions.fresh
 import org.mobilenativefoundation.store.store5.impl.extensions.get
 import software.amazon.lastmile.kotlin.inject.anvil.AppScope
 import software.amazon.lastmile.kotlin.inject.anvil.ContributesBinding
@@ -73,61 +76,84 @@ class RealHackerNewsRepository(
     private val commentDao: CommentDao,
     private val dispatcherProvider: DispatcherProvider
 ) : HackerNewsRepository {
-    private val storyStore = StoreBuilder.from(fetcher = Fetcher.of { id: Long ->
-        withContext(dispatcherProvider.io) {
-            api.getStory(id)
-        }
-    }, sourceOfTruth = SourceOfTruth.of(reader = { id: Long ->
-        storyDao.getStory(id).map { it?.toDomain() }.flowOn(dispatcherProvider.databaseRead)
-    }, writer = { id: Long, story: NetworkStory ->
-        withContext(dispatcherProvider.databaseWrite) {
-            storyDao.insertStory(story.toEntity())
-        }
-    }, delete = { id: Long ->
-//                withContext(dispatcherProvider.databaseWrite) {
-//                    storyDao.deleteStory(id)
-//                }
-    })).build()
+    private val storyStore = StoreBuilder.from(
+        fetcher = Fetcher.of { id: Long ->
+            withContext(dispatcherProvider.io) {
+                api.getStory(id)
+            }
+        },
+        sourceOfTruth = SourceOfTruth.of(
+            reader = { id: Long ->
+                storyDao.getStory(id).map { it?.toDomain() }.flowOn(dispatcherProvider.databaseRead)
+            }, writer = { _, story: NetworkStory ->
+                withContext(dispatcherProvider.databaseWrite) {
+                    storyDao.insertStory(story.toEntity())
+                }
+            }
+        )
+    )
+        .disableCache()
+        .build()
 
-    private val storyListStore = StoreBuilder.from(fetcher = Fetcher.of { type: StoryType ->
-        val endpoint = when (type) {
-            StoryType.TOP -> "topstories"
-            StoryType.NEW -> "newstories"
-            StoryType.BEST -> "beststories"
-            StoryType.ASK -> "askstories"
-            StoryType.SHOW -> "showstories"
-            StoryType.JOB -> "jobstories"
-        }
-        api.getStories(endpoint)
-    }, sourceOfTruth = SourceOfTruth.of(reader = { type: StoryType ->
-        storyTypeDao.getStoryType(type.name).map { entity ->
-            entity?.storyIds?.split(",")?.map { it.toLong() }
-        }.flowOn(dispatcherProvider.databaseRead)
-    }, writer = { type: StoryType, ids: List<Long> ->
-        withContext(dispatcherProvider.databaseWrite) {
-            storyTypeDao.insertStoryType(
-                StoryTypeEntity(
-                    type = type.name, storyIds = ids.joinToString(",")
-                )
-            )
-        }
-    })).build()
+    private val storyListStore = StoreBuilder.from(
+        fetcher = Fetcher.of { type: StoryType ->
+            val endpoint = when (type) {
+                StoryType.TOP -> "topstories"
+                StoryType.NEW -> "newstories"
+                StoryType.BEST -> "beststories"
+                StoryType.ASK -> "askstories"
+                StoryType.SHOW -> "showstories"
+                StoryType.JOB -> "jobstories"
+            }
+            api.getStories(endpoint)
+        }, sourceOfTruth = SourceOfTruth.of(
+            reader = { type: StoryType ->
+                storyTypeDao.getStoryType(type.name).map { entity ->
+                    entity?.storyIds?.split(",")?.map { it.toLong() }
+                }.flowOn(dispatcherProvider.databaseRead)
+            },
+            writer = { type: StoryType, ids: List<Long> ->
+                withContext(dispatcherProvider.databaseWrite) {
+                    storyTypeDao.insertStoryType(
+                        StoryTypeEntity(
+                            type = type.name, storyIds = ids.joinToString(",")
+                        )
+                    )
+                }
+            })
+    )
+        .disableCache()
+        .build()
 
     override suspend fun getStoryIds(type: StoryType): List<Long> {
         return try {
-            storyListStore.fresh(type)
+            storyListStore.get(type)
         } catch (e: Exception) {
             e.printStackTrace()
-            storyListStore.get(type)
+            emptyList()
         }
     }
 
+    private fun observeStoryIds(type: StoryType): Flow<List<Long>> {
+        return storyListStore.stream(
+            StoreReadRequest.cached(
+                key = type,
+                refresh = true
+            )
+        ).mapNotNull { it.dataOrNull() }
+    }
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     override fun observeStories(type: StoryType): Flow<PagingData<Story>> {
-        return Pager(
-            config = PagingConfig(
-                pageSize = 20,
-                enablePlaceholders = false
-            ), pagingSourceFactory = { StoryPagingSource(this, type) }).flow
+        return observeStoryIds(type)
+            .distinctUntilChanged { old, new -> old.size == new.size }
+            .flatMapLatest { ids ->
+                Pager(
+                    config = PagingConfig(
+                        pageSize = 20,
+                        enablePlaceholders = false
+                    ), pagingSourceFactory = { StoryPagingSource(this, ids) }).flow
+            }
     }
 
     override suspend fun getStory(id: Long): Story {
@@ -149,35 +175,38 @@ class RealHackerNewsRepository(
             val story = storyStore.get(storyId)
             val kids = story.kids ?: emptyList()
             fetchNetworkCommentsRecursively(kids)
-        }, sourceOfTruth = SourceOfTruth.of(reader = { storyId: Long ->
-            storyDao.getStoryWithComments(storyId).map { relation ->
-                relation?.comments?.map { entity ->
-                    Comment(
-                        id = entity.id,
-                        text = entity.text,
-                        author = entity.author,
-                        time = entity.time,
-                        parent = entity.parent,
-                        kids = entity.kids.split(",").filter { it.isNotEmpty() }
-                            .map { it.toLong() })
+        },
+        sourceOfTruth = SourceOfTruth.of(
+            reader = { storyId: Long ->
+                storyDao.getStoryWithComments(storyId).map { relation ->
+                    relation?.comments?.map { entity ->
+                        Comment(
+                            id = entity.id,
+                            text = entity.text,
+                            author = entity.author,
+                            time = entity.time,
+                            parent = entity.parent,
+                            kids = entity.kids.split(",").filter { it.isNotEmpty() }
+                                .map { it.toLong() })
+                    }
+                }.flowOn(dispatcherProvider.databaseRead)
+            },
+            writer = { storyId: Long, comments: List<NetworkComment> ->
+                withContext(dispatcherProvider.databaseWrite) {
+                    val entities = comments.map { networkComment ->
+                        CommentEntity(
+                            id = networkComment.id,
+                            storyId = storyId,
+                            text = networkComment.text ?: "",
+                            author = networkComment.by ?: "",
+                            time = networkComment.time ?: 0,
+                            parent = networkComment.parent ?: 0,
+                            kids = networkComment.kids?.joinToString(",") ?: ""
+                        )
+                    }
+                    commentDao.insertComments(entities)
                 }
-            }.flowOn(dispatcherProvider.databaseRead)
-        }, writer = { storyId: Long, comments: List<NetworkComment> ->
-            withContext(dispatcherProvider.databaseWrite) {
-                val entities = comments.map { networkComment ->
-                    CommentEntity(
-                        id = networkComment.id,
-                        storyId = storyId,
-                        text = networkComment.text ?: "",
-                        author = networkComment.by ?: "",
-                        time = networkComment.time ?: 0,
-                        parent = networkComment.parent ?: 0,
-                        kids = networkComment.kids?.joinToString(",") ?: ""
-                    )
-                }
-                commentDao.insertComments(entities)
             }
-        }
         ))
         .disableCache()
         .build()
@@ -192,7 +221,7 @@ class RealHackerNewsRepository(
             async {
                 try {
                     api.getComment(id)
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     null
                 }
             }
@@ -218,31 +247,6 @@ class RealHackerNewsRepository(
             StoreReadRequest.cached(
                 key = storyId, refresh = refresh
             )
-        )
-    }
-
-    private fun StoryEntity.toDomain(): Story {
-        return Story(
-            id = id,
-            title = title,
-            url = url,
-            by = by,
-            score = score,
-            time = time,
-            descendants = descendants,
-            kids = kids?.split(",")?.map { it.toLong() })
-    }
-
-    private fun NetworkStory.toEntity(): StoryEntity {
-        return StoryEntity(
-            id = id,
-            title = title,
-            url = url,
-            by = by,
-            score = score ?: 0,
-            time = time,
-            descendants = descendants,
-            kids = kids?.joinToString(",")
         )
     }
 }

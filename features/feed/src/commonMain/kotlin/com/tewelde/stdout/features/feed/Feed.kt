@@ -32,8 +32,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.paging.LoadState
 import androidx.paging.PagingData
+import androidx.paging.cachedIn
 import androidx.paging.compose.collectAsLazyPagingItems
-import co.touchlab.kermit.Logger
 import com.slack.circuit.codegen.annotations.CircuitInject
 import com.slack.circuit.retained.DelicateCircuitRetainedApi
 import com.slack.circuit.retained.rememberRetained
@@ -49,8 +49,10 @@ import com.tewelde.stdout.core.model.StoryType
 import com.tewelde.stdout.core.navigation.DetailsScreen
 import com.tewelde.stdout.core.navigation.FeedScreen
 import com.tewelde.stdout.core.navigation.UrlScreen
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.catch
 import me.tatarka.inject.annotations.Assisted
 import me.tatarka.inject.annotations.Inject
 
@@ -78,13 +80,9 @@ class FeedPresenter(
     @Composable
     override fun present(): FeedState {
         var selectedType by rememberRetained { mutableStateOf(StoryType.TOP) }
-        val stories = rememberRetained(selectedType) {
-            repository.observeStories(selectedType)
-                .catch {
-                    // TODO catch LoadState.Error from PagingSource
-                    Logger.e(it) { "Observing stories failed" }
-                }
-        }
+        val stories = repository
+            .observeStories(selectedType)
+            .rememberRetainedCachedPagingFlow(selectedType)
 
         return FeedState(
             stories = stories,
@@ -115,18 +113,18 @@ class FeedPresenter(
     }
 }
 
-//@Composable
-//inline fun <T : Any> Flow<PagingData<T>>.rememberRetainedCachedPagingFlow(
-//    vararg inputs: Any?,
-//    scope: CoroutineScope = rememberRetainedCoroutineScope(),
-//): Flow<PagingData<T>> = rememberRetained(inputs, scope) { cachedIn(scope) }
-//
-//@Composable
-//fun rememberRetainedCoroutineScope(): CoroutineScope {
-//    return rememberRetained("coroutine_scope") {
-//        CoroutineScope(Dispatchers.Main + Job())
-//    }
-//}
+@Composable
+fun <T : Any> Flow<PagingData<T>>.rememberRetainedCachedPagingFlow(
+    vararg inputs: Any?,
+    scope: CoroutineScope = rememberRetainedCoroutineScope(),
+): Flow<PagingData<T>> = rememberRetained(inputs, scope) { cachedIn(scope) }
+
+@Composable
+fun rememberRetainedCoroutineScope(): CoroutineScope {
+    return rememberRetained("coroutine_scope") {
+        CoroutineScope(Dispatchers.Main + Job())
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

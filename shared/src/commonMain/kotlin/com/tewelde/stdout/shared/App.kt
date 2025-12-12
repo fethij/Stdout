@@ -25,7 +25,6 @@ import me.tatarka.inject.annotations.Inject
 import software.amazon.lastmile.kotlin.inject.anvil.ContributesBinding
 import software.amazon.lastmile.kotlin.inject.anvil.SingleIn
 
-
 interface AppUi {
     @Composable
     fun Content(
@@ -53,6 +52,7 @@ class StdoutApp(
         val urlNavigator: Navigator = remember(navigator) {
             OpenUrlNavigator(navigator, launchUrl)
         }
+
         CompositionLocalProvider(
             LocalRetainedStateRegistry provides lifecycleRetainedStateRegistry(),
         ) {

@@ -3,14 +3,14 @@ package com.tewelde.stdout.core.data
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import com.tewelde.stdout.core.model.Story
-import com.tewelde.stdout.core.model.StoryType
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 
 class StoryPagingSource(
     private val repository: HackerNewsRepository,
-    private val type: StoryType
+    private val ids: List<Long>
 ) : PagingSource<Int, Story>() {
-
-    private var storyIds: List<Long>? = null
 
     override fun getRefreshKey(state: PagingState<Int, Story>): Int? {
         return state.anchorPosition?.let { anchorPosition ->
@@ -23,11 +23,6 @@ class StoryPagingSource(
         return try {
             val page = params.key ?: 0
 
-            if (storyIds == null) {
-                storyIds = repository.getStoryIds(type)
-            }
-
-            val ids = storyIds ?: emptyList()
             val start = page * params.loadSize
             val end = minOf(start + params.loadSize, ids.size)
 
@@ -40,13 +35,16 @@ class StoryPagingSource(
             }
 
             val pageIds = ids.subList(start, end)
-            val stories = pageIds.mapNotNull { id ->
-                // TODO should be parallel
-                try {
-                    repository.getStory(id)
-                } catch (e: Exception) {
-                    null
-                }
+            val stories = coroutineScope {
+                pageIds.map { id ->
+                    async {
+                        try {
+                            repository.getStory(id)
+                        } catch (_: Exception) {
+                            null
+                        }
+                    }
+                }.awaitAll().filterNotNull()
             }
 
             LoadResult.Page(

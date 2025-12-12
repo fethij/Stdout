@@ -1,5 +1,5 @@
 [versions]
-agp = "8.13.1"
+agp = "8.13.2"
 androidx-activity = "1.12.1"
 androidxcomposeui = "1.10.0"
 androidx-appcompat = "1.7.1"
@@ -21,7 +21,6 @@ kotlinInjectAnvil = "0.1.6"
 kotlinxSerialization = "1.9.0"
 kotlinxCoroutines = "1.10.2"
 coil3 = "3.3.0"
-kotlinStdlib = "2.2.21"
 runner = "1.7.0"
 core = "1.7.0"
 browser = "1.9.0"
@@ -55,6 +54,7 @@ circuit-codegen-annotations = { module = "com.slack.circuit:circuit-codegen-anno
 circuit-codegen = { module = "com.slack.circuit:circuit-codegen", version.ref = "circuit" }
 circuitx-navigation = { module = "com.slack.circuit:circuitx-navigation", version.ref = "circuit" }
 circuitx-effects = { module = "com.slack.circuit:circuitx-effects", version.ref = "circuit" }
+circuit-retained = { module = "com.slack.circuit:circuit-retained", version.ref = "circuit" }
 
 # Store5
 store5 = { module = "org.mobilenativefoundation.store:store5", version.ref = "store5" }
@@ -92,14 +92,13 @@ coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil3"
 coil-network-ktor = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil3" }
 
 # Build Logic
-android-gradlePlugin = { module = "com.android.tools.build:gradle", version.ref = "agp" }
-kotlin-gradlePlugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
-compose-gradlePlugin = { module = "org.jetbrains.compose:compose-gradle-plugin", version.ref = "composeMultiplatform" }
-ksp-gradlePlugin = { module = "com.google.devtools.ksp:symbol-processing-gradle-plugin", version.ref = "ksp" }
-kotlin-serialization-gradlePlugin = { module = "org.jetbrains.kotlin:kotlin-serialization", version.ref = "kotlin" }
-kotlin-stdlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version.ref = "kotlinStdlib" }
-androidx-runner = { group = "androidx.test", name = "runner", version.ref = "runner" }
-androidx-core = { group = "androidx.test", name = "core", version.ref = "core" }
+#android-gradlePlugin = { module = "com.android.tools.build:gradle", version.ref = "agp" }
+#kotlin-gradlePlugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+#compose-gradlePlugin = { module = "org.jetbrains.compose:compose-gradle-plugin", version.ref = "composeMultiplatform" }
+#ksp-gradlePlugin = { module = "com.google.devtools.ksp:symbol-processing-gradle-plugin", version.ref = "ksp" }
+#kotlin-serialization-gradlePlugin = { module = "org.jetbrains.kotlin:kotlin-serialization", version.ref = "kotlin" }
+#androidx-runner = { group = "androidx.test", name = "runner", version.ref = "runner" }
+#androidx-core = { group = "androidx.test", name = "core", version.ref = "core" }
 androidx-browser = { group = "androidx.browser", name = "browser", version.ref = "browser" }
 
 [bundles]
@@ -116,7 +115,8 @@ circuit = [
     "circuitx-gestureNav",
     "circuitx-navigation",
     "circuitx-effects",
-    "circuit-codegen-annotations"
+    "circuit-codegen-annotations",
+    "circuit-retained",
 ]
 
 [plugins]

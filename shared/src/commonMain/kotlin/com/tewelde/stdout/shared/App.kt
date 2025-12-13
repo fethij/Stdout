@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import com.slack.circuit.backstack.rememberSaveableBackStack
@@ -13,8 +12,6 @@ import com.slack.circuit.foundation.CircuitCompositionLocals
 import com.slack.circuit.foundation.NavigableCircuitContent
 import com.slack.circuit.foundation.rememberCircuitNavigator
 import com.slack.circuit.overlay.ContentWithOverlays
-import com.slack.circuit.retained.LocalRetainedStateRegistry
-import com.slack.circuit.retained.lifecycleRetainedStateRegistry
 import com.slack.circuit.runtime.Navigator
 import com.slack.circuitx.gesturenavigation.GestureNavigationDecorationFactory
 import com.tewelde.stdout.common.di.UiScope
@@ -52,23 +49,18 @@ class StdoutApp(
         val urlNavigator: Navigator = remember(navigator) {
             OpenUrlNavigator(navigator, launchUrl)
         }
-
-        CompositionLocalProvider(
-            LocalRetainedStateRegistry provides lifecycleRetainedStateRegistry(),
-        ) {
-            CircuitCompositionLocals(circuit) {
-                StdoutTheme {
-                    Surface(color = MaterialTheme.colorScheme.background) {
-                        ContentWithOverlays {
-                            NavigableCircuitContent(
-                                modifier = modifier.displayCutoutPadding(),
-                                navigator = urlNavigator,
-                                backStack = backStack,
-                                decoratorFactory = remember(navigator) {
-                                    GestureNavigationDecorationFactory(onBackInvoked = navigator::pop)
-                                }
-                            )
-                        }
+        CircuitCompositionLocals(circuit) {
+            StdoutTheme {
+                Surface(color = MaterialTheme.colorScheme.background) {
+                    ContentWithOverlays {
+                        NavigableCircuitContent(
+                            modifier = modifier.displayCutoutPadding(),
+                            navigator = urlNavigator,
+                            backStack = backStack,
+                            decoratorFactory = remember(navigator) {
+                                GestureNavigationDecorationFactory(onBackInvoked = navigator::pop)
+                            }
+                        )
                     }
                 }
             }

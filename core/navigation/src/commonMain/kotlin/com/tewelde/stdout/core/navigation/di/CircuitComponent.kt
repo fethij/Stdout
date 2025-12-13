@@ -1,4 +1,4 @@
-package com.tewelde.stdout.shared.di
+package com.tewelde.stdout.core.navigation.di
 
 import com.slack.circuit.foundation.Circuit
 import com.slack.circuit.runtime.presenter.Presenter

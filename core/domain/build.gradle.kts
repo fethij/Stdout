@@ -10,6 +10,8 @@ kotlin {
             api(projects.core.common)
             api(projects.core.model)
             api(projects.core.data)
+
+            implementation(libs.androidx.paging.common)
         }
     }
 }

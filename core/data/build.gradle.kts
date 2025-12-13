@@ -12,7 +12,6 @@ kotlin {
             api(libs.store5)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.bundles.kotlinInjectAnvil)
-            implementation(libs.androidx.paging.common)
         }
     }
 }

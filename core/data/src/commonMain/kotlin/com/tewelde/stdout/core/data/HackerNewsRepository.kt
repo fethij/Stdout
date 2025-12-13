@@ -1,8 +1,5 @@
 package com.tewelde.stdout.core.data
 
-import androidx.paging.Pager
-import androidx.paging.PagingConfig
-import androidx.paging.PagingData
 import com.tewelde.stdout.common.coroutines.DispatcherProvider
 import com.tewelde.stdout.core.data.Mapper.toDomain
 import com.tewelde.stdout.core.data.Mapper.toEntity
@@ -21,8 +18,6 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
@@ -38,12 +33,10 @@ import software.amazon.lastmile.kotlin.inject.anvil.AppScope
 import software.amazon.lastmile.kotlin.inject.anvil.ContributesBinding
 import software.amazon.lastmile.kotlin.inject.anvil.SingleIn
 
-
 interface HackerNewsRepository {
-    fun observeStories(type: StoryType): Flow<PagingData<Story>>
 
     /**
-     * Observe a story with its comments.
+     * Observe a list of comments for a story.
      *
      * @param storyId The ID of the story.
      * @param refresh Whether to refresh the data from the network.
@@ -53,16 +46,26 @@ interface HackerNewsRepository {
     ): Flow<StoreReadResponse<List<Comment>>>
 
     /**
+     * Observe a list of story IDs.
+     *
+     * @param type The type of stories to observe.
+     */
+    fun observeStoryIds(type: StoryType): Flow<List<Long>>
+
+    /**
      * Observe a single story.
      *
      * @param id The ID of the story.
      * @param refresh Whether to refresh the data from the network.
      */
     fun observeStory(
-        id: Long, refresh: Boolean = true
+        id: Long,
+        refresh: Boolean = true
     ): Flow<StoreReadResponse<Story>>
 
-    suspend fun getStoryIds(type: StoryType): List<Long>
+    /**
+     * Gets a story from cache
+     */
     suspend fun getStory(id: Long): Story
 }
 
@@ -76,6 +79,7 @@ class RealHackerNewsRepository(
     private val commentDao: CommentDao,
     private val dispatcherProvider: DispatcherProvider
 ) : HackerNewsRepository {
+
     private val storyStore = StoreBuilder.from(
         fetcher = Fetcher.of { id: Long ->
             withContext(dispatcherProvider.io) {
@@ -125,35 +129,13 @@ class RealHackerNewsRepository(
         .disableCache()
         .build()
 
-    override suspend fun getStoryIds(type: StoryType): List<Long> {
-        return try {
-            storyListStore.get(type)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            emptyList()
-        }
-    }
-
-    private fun observeStoryIds(type: StoryType): Flow<List<Long>> {
+    override fun observeStoryIds(type: StoryType): Flow<List<Long>> {
         return storyListStore.stream(
             StoreReadRequest.cached(
                 key = type,
                 refresh = true
             )
         ).mapNotNull { it.dataOrNull() }
-    }
-
-    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-    override fun observeStories(type: StoryType): Flow<PagingData<Story>> {
-        return observeStoryIds(type)
-            .distinctUntilChanged { old, new -> old.size == new.size }
-            .flatMapLatest { ids ->
-                Pager(
-                    config = PagingConfig(
-                        pageSize = 20,
-                        enablePlaceholders = false
-                    ), pagingSourceFactory = { StoryPagingSource(this, ids) }).flow
-            }
     }
 
     override suspend fun getStory(id: Long): Story {
@@ -168,7 +150,6 @@ class RealHackerNewsRepository(
             )
         )
     }
-
 
     private val commentStore = StoreBuilder.from(
         fetcher = Fetcher.of { storyId: Long ->

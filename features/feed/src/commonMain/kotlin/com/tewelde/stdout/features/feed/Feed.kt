@@ -42,7 +42,6 @@ import com.slack.circuit.runtime.CircuitUiState
 import com.slack.circuit.runtime.Navigator
 import com.slack.circuit.runtime.presenter.Presenter
 import com.tewelde.stdout.common.di.UiScope
-import com.tewelde.stdout.core.data.HackerNewsRepository
 import com.tewelde.stdout.core.designsystem.theme.component.StoryItem
 import com.tewelde.stdout.core.model.Story
 import com.tewelde.stdout.core.model.StoryType
@@ -55,7 +54,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import me.tatarka.inject.annotations.Assisted
 import me.tatarka.inject.annotations.Inject
-
+import com.tewelde.stdout.core.domain.ObserveStoriesUseCase
 
 data class FeedState(
     val stories: Flow<PagingData<Story>>,
@@ -72,7 +71,7 @@ sealed interface FeedEvent : CircuitUiEvent {
 @Inject
 @CircuitInject(FeedScreen::class, UiScope::class)
 class FeedPresenter(
-    private val repository: HackerNewsRepository,
+    private val observeStories: ObserveStoriesUseCase,
     @Assisted private val navigator: Navigator
 ) : Presenter<FeedState> {
 
@@ -80,8 +79,7 @@ class FeedPresenter(
     @Composable
     override fun present(): FeedState {
         var selectedType by rememberRetained { mutableStateOf(StoryType.TOP) }
-        val stories = repository
-            .observeStories(selectedType)
+        val stories = observeStories(selectedType)
             .rememberRetainedCachedPagingFlow(selectedType)
 
         return FeedState(

@@ -1,5 +1,6 @@
 package com.tewelde.stdout.core.data
 
+import co.touchlab.kermit.Logger
 import com.tewelde.stdout.common.coroutines.DispatcherProvider
 import com.tewelde.stdout.core.data.Mapper.toDomain
 import com.tewelde.stdout.core.data.Mapper.toEntity
@@ -202,7 +203,8 @@ class RealHackerNewsRepository(
             async {
                 try {
                     api.getComment(id)
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    Logger.e(e) { "Error fetching comment $id" }
                     null
                 }
             }

@@ -28,6 +28,8 @@ paging = "3.4.0-alpha04"
 compose-foundation = "1.10.0"
 modulegraph = "0.13.0"
 kermit = "2.0.8"
+richeditor = "1.0.0-rc13"
+ksoup = "0.2.5"
 
 [libraries]
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
@@ -91,14 +93,11 @@ kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-c
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil3" }
 coil-network-ktor = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil3" }
 
+# HTML
+richeditor = { module = "com.mohamedrejeb.richeditor:richeditor-compose", version.ref = "richeditor" }
+ksoup = { module = "com.fleeksoft.ksoup:ksoup", version.ref = "ksoup" }
+
 # Build Logic
-#android-gradlePlugin = { module = "com.android.tools.build:gradle", version.ref = "agp" }
-#kotlin-gradlePlugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
-#compose-gradlePlugin = { module = "org.jetbrains.compose:compose-gradle-plugin", version.ref = "composeMultiplatform" }
-#ksp-gradlePlugin = { module = "com.google.devtools.ksp:symbol-processing-gradle-plugin", version.ref = "ksp" }
-#kotlin-serialization-gradlePlugin = { module = "org.jetbrains.kotlin:kotlin-serialization", version.ref = "kotlin" }
-#androidx-runner = { group = "androidx.test", name = "runner", version.ref = "runner" }
-#androidx-core = { group = "androidx.test", name = "core", version.ref = "core" }
 androidx-browser = { group = "androidx.browser", name = "browser", version.ref = "browser" }
 
 [bundles]

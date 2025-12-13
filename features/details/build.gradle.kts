@@ -19,6 +19,8 @@ kotlin {
             implementation(compose.ui)
             implementation(compose.components.resources)
             implementation(libs.androidx.paging.compose)
+            implementation(libs.richeditor)
+            implementation(libs.ksoup)
         }
     }
 }

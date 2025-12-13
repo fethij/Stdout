@@ -21,3 +21,5 @@ kotlin {
 room {
     schemaDirectory("$projectDir/schemas")
 }
+
+addKspDependencyForAllTargets(libs.androidx.room.compiler)

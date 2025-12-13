@@ -15,11 +15,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,10 +30,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.UriHandler
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.fleeksoft.ksoup.Ksoup
+import com.mohamedrejeb.richeditor.model.RichTextState
+import com.mohamedrejeb.richeditor.model.rememberRichTextState
+import com.mohamedrejeb.richeditor.ui.material3.RichText
 import com.slack.circuit.codegen.annotations.CircuitInject
 import com.slack.circuit.runtime.CircuitUiEvent
 import com.slack.circuit.runtime.CircuitUiState
@@ -68,6 +77,8 @@ sealed interface CommentsLoadState : CircuitUiState {
 
     data class Success(
         val comments: List<Comment>,
+        val uriHandler: UriHandler,
+        val richTextState: RichTextState,
         val eventSink: (DetailsEvent) -> Unit,
     ) : CommentsLoadState
 }
@@ -106,6 +117,18 @@ class DetailsPresenter(
                 is DetailsEvent.OpenStory -> event.story.url?.let { navigator.goTo(UrlScreen(it)) }
             }
         }
+        val uriHandler: UriHandler by remember(screen.storyId) {
+            mutableStateOf(object : UriHandler {
+                override fun openUri(uri: String) {
+                    val decodedUri = Ksoup.parse(uri).text()
+                    navigator.goTo(UrlScreen(decodedUri))
+                }
+            })
+        }
+        val richTextState = rememberRichTextState().apply {
+            config.linkColor = MaterialTheme.colorScheme.primary
+            toggleSpanStyle(SpanStyle(fontFamily = FontFamily.Monospace))
+        }
         val commentsState by observeComments(screen.storyId)
             .map { loadState ->
                 when (loadState) {
@@ -117,6 +140,8 @@ class DetailsPresenter(
                         } else {
                             CommentsLoadState.Success(
                                 comments = comments,
+                                uriHandler = uriHandler,
+                                richTextState = richTextState,
                                 eventSink = eventSink
                             )
                         }
@@ -270,20 +295,7 @@ fun Details(state: DetailsState, modifier: Modifier = Modifier) {
                     modifier = Modifier.fillMaxSize()
                 ) {
                     val commentMap = commentsState.comments.associateBy { it.id }
-                    // If story is loaded, filter by parent being storyId. 
-                    // But if story load failed or is loading, we might still have comments if we only know the id?
-                    // Actually, comments usually require the story ID to be filtered properly if we have a flat list of EVERYTHING in DB.
-                    // But `observeComments` filters by `storyId` via the Store/DAO relation. So `commentsState.comments` ONLY contains comments for this story.
-                    // So we can find roots by checking which ones have no parent in this list OR parent == storyId.
-                    // However, `parent` field in Comment model refers to story ID for top level comments.
-
                     val topLevelComments = commentsState.comments.filter { comment ->
-                        // Top level comments have parent == storyId
-                        // We don't have storyId readily available in `CommentsLoadState.Success` here unless we pass it or infer it.
-                        // But we know `commentsState.comments` are children of the current story.
-                        // A simplistic check: parent is NOT in the map (it's the story) OR parent is explicitly the story ID.
-                        // Since we don't pass storyID to this UI state easily (it's in screen), let's rely on the property that
-                        // their parent ID is not present in the `commentMap` (because the story isn't a comment).
                         !commentMap.containsKey(comment.parent)
                     }
 
@@ -305,7 +317,9 @@ fun Details(state: DetailsState, modifier: Modifier = Modifier) {
                         val (comment, depth) = flatComments[index]
                         CommentItem(
                             comment = comment,
-                            depth = depth
+                            depth = depth,
+                            uriHandler = commentsState.uriHandler,
+                            richTextState = commentsState.richTextState
                         )
                     }
                 }
@@ -314,10 +328,13 @@ fun Details(state: DetailsState, modifier: Modifier = Modifier) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommentItem(
     comment: Comment,
-    depth: Int
+    depth: Int,
+    uriHandler: UriHandler,
+    richTextState: RichTextState
 ) {
     var expanded by remember { mutableStateOf(true) }
     val indent = minOf(depth, 8) * 8
@@ -352,12 +369,14 @@ fun CommentItem(
                 }
 
                 if (expanded) {
-                    Text(
-                        text = comment.text,
-                        color = Color.LightGray,
-                        fontFamily = FontFamily.Monospace,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
+                    CompositionLocalProvider(LocalUriHandler provides uriHandler) {
+                        RichText(
+                            state = richTextState.setHtml(comment.text),
+                            color = Color.LightGray,
+                            fontFamily = FontFamily.Monospace,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
                 }
             }
         }
